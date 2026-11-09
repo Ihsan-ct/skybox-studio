@@ -23,6 +23,9 @@ assert.equal((await call(create, { headers: { ...ok, origin: 'https://evil.test'
 assert.equal((await call(create, { headers: { ...ok, 'sec-fetch-site': 'cross-site' }, query: q, body: png(100) })).code, 403);
 assert.equal((await call(create, { headers: { ...ok, origin: 'https://x.test' }, query: q, body: png(100) })).code, 200);
 assert.equal((await call(poll, { method: 'GET', headers: ok, query: { path: 'operations/../x' } })).code, 400);
+let url;
+globalThis.fetch = async u => { url = u; return { ok: true, text: async () => '{"done":false}' }; };
 const r = await call(poll, { method: 'GET', headers: ok, query: { path: 'operations/abc' } });
+assert.equal(url, 'https://apis.roblox.com/assets/v1/operations/abc');
 assert.equal(r.h['Cache-Control'], 'no-store');
 console.log('semua cek lolos');

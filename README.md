@@ -55,11 +55,13 @@ Lalu buka `http://localhost:8080` (atau port yang ditampilkan).
 
 ## Upload Langsung ke Roblox (dari browser)
 **Langkah singkat**
-1. Buat API Key di [Creator Dashboard > Credentials](https://create.roblox.com/dashboard/credentials) dengan permission **Assets > Add assets** (isi juga IP/akses sesuai kebutuhan).
-2. Buka situs yang di-deploy di Vercel, unggah panorama, lalu buka tab **Upload Roblox**.
+1. Buat API Key di [Creator Dashboard > Credentials](https://create.roblox.com/dashboard/credentials) dengan permission **Assets** (Read + Write); biarkan pembatasan IP mati karena IP Vercel berubah-ubah.
+2. Buka situs yang di-deploy di Vercel, unggah panorama, lalu buka tab **Dashboard**.
 3. Isi API Key dan User ID (atau Group ID), klik **Upload ke Roblox**. Tiap sisi dirender, diunggah, dan Image ID langsung terisi di form script Luau begitu selesai.
 
 Ini jalan lewat 2 Serverless Function (`api/roblox-create.js`, `api/roblox-poll.js`) karena Roblox Open Cloud tidak mengizinkan request langsung dari browser (CORS). Browser memanggil `/api/*` (same-origin), lalu function meneruskannya server-to-server ke Roblox. API key hanya diteruskan per request, tidak disimpan. Request lintas-situs ditolak (`api/_guard.js`).
+
+**Akun tersimpan.** Di tab Dashboard, isi form lalu klik **Simpan akun** supaya tidak mengetik ulang. Data disimpan di `localStorage` browser itu saja (tidak dikirim ke server). Kalau kamu mengisi kata sandi brankas, API key dienkripsi (AES-GCM, kunci dari PBKDF2) dan kata sandi diminta lagi saat menekan **Pakai**; tanpa kata sandi, key tersimpan sebagai teks biasa. Jangan simpan key di komputer bersama.
 
 **Batas 4,5 MB.** Vercel membatasi body request function sampai 4,5 MB. Kalau PNG satu sisi lebih besar dari ±4,2 MB, aplikasi otomatis memperkecil resolusinya bertahap (minimum 512 px) dan mencatatnya di log. Kalau tetap tidak muat, pakai `upload-skybox.mjs`.
 

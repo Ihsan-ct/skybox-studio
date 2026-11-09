@@ -109,7 +109,7 @@ details.group > summary { cursor: pointer; font-weight: 600; min-height: 32px; d
 #status a { color: var(--accent); text-decoration: underline; }
 .note { font-size: 12px; color: var(--muted); margin-top: 10px; }
 .field { display: grid; grid-template-columns: 70px 1fr; gap: 8px; align-items: center; margin: 6px 0; }
-.field input[type=text] { width: 100%; min-height: 40px; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel2); color: var(--text); font: inherit; }
+#rbxUploadRoot input[type=text], #rbxUploadRoot input[type=password], .field input[type=text] { width: 100%; min-height: 40px; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel2); color: var(--text); font: inherit; }
 pre { background: var(--panel2); border: 1px solid var(--line); border-radius: 8px; padding: 10px; overflow: auto; font-size: 13px; margin: 8px 0; }
 .guide { font-size: 13px; line-height: 1.6; color: var(--muted); margin-top: 16px; border-top: 1px solid var(--line); padding-top: 12px; }
 .guide h4 { color: var(--text); margin: 8px 0 4px; font-size: 14px; }

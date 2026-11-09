@@ -24,13 +24,13 @@ export default async function handler(req, res) {
   }
 
   try {
-    const r = await fetch('https://apis.roblox.com/' + path, {
+    const r = await fetch('https://apis.roblox.com/assets/v1/' + path, {
       headers: { 'x-api-key': apiKey }
     });
     const text = await r.text();
 
     if (!r.ok) {
-      res.status(r.status).json({ error: 'Polling gagal: ' + text.slice(0, 300) });
+      res.status(r.status).json({ error: 'Polling gagal (HTTP ' + r.status + '): ' + text.slice(0, 300) });
       return;
     }
 
