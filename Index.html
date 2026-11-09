@@ -3,174 +3,155 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Roblox Skybox Studio</title>
+  <title>Roblox Skybox Studio - 360° Panorama to Cubemap Slicer</title>
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Three.js & OrbitControls -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <!-- JSZip & FileSaver for 1-Click ZIP Download -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
   <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
   <style>
-    body {
-      background-color: #0b0f19;
-      color: #e2e8f0;
-      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    }
-    .custom-scrollbar::-webkit-scrollbar {
-      width: 6px;
-    }
-    .custom-scrollbar::-webkit-scrollbar-track {
-      background: #111827;
-    }
-    .custom-scrollbar::-webkit-scrollbar-thumb {
-      background: #374151;
-      border-radius: 3px;
-    }
+    body { background-color: #0b0f19; color: #e2e8f0; font-family: ui-sans-serif, system-ui, sans-serif; }
+    .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+    .custom-scrollbar::-webkit-scrollbar-track { background: #111827; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: #374151; border-radius: 3px; }
   </style>
 </head>
 <body class="h-screen flex flex-col overflow-hidden">
-  <!-- Top Navigation -->
-  <header class="h-14 border-b border-gray-800 bg-gray-900/80 backdrop-blur px-6 flex items-center justify-between z-10">
+  <!-- Header -->
+  <header class="h-14 border-b border-gray-800 bg-gray-900/90 backdrop-blur px-6 flex items-center justify-between z-10">
     <div class="flex items-center space-x-3">
-      <div class="w-8 h-8 rounded-lg bg-gradient-to-tr from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/30">
-        <i data-lucide="box" class="w-5 h-5 text-white"></i>
+      <div class="w-8 h-8 rounded-lg bg-gradient-to-tr from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/30">
+        <i data-lucide="scissors" class="w-5 h-5 text-white"></i>
       </div>
       <div>
         <h1 class="text-base font-bold text-white tracking-wide">Roblox Skybox Studio</h1>
-        <p class="text-[10px] text-gray-400">Interactive 360° Skybox Previewer & Luau Exporter</p>
+        <p class="text-[10px] text-cyan-400 font-medium">360° Equirectangular Panorama → 6-Face Cubemap Slicer</p>
       </div>
     </div>
     <div class="flex items-center space-x-3">
-      <button id="resetCamBtn" class="px-3 py-1.5 text-xs font-medium text-gray-300 hover:text-white bg-gray-800 hover:bg-gray-700 rounded-md border border-gray-700 transition flex items-center gap-1.5">
-        <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i> Reset Camera
-      </button>
-      <button id="exportCodeBtn" class="px-3 py-1.5 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-500 rounded-md shadow-md shadow-indigo-600/30 transition flex items-center gap-1.5">
-        <i data-lucide="code" class="w-3.5 h-3.5"></i> Export Luau
+      <select id="resSelect" class="bg-gray-800 border border-gray-700 text-xs text-gray-200 px-3 py-1.5 rounded-md focus:outline-none">
+        <option value="512">Resolution: 512 × 512</option>
+        <option value="1024" selected>Resolution: 1024 × 1024 (Roblox HD)</option>
+      </select>
+      <button id="downloadZipBtn" disabled class="px-4 py-1.5 text-xs font-semibold text-white bg-gray-700 cursor-not-allowed rounded-md transition flex items-center gap-1.5">
+        <i data-lucide="download" class="w-3.5 h-3.5"></i> Download All (.ZIP)
       </button>
     </div>
   </header>
 
-  <!-- Main Content Layout -->
+  <!-- Main Layout -->
   <div class="flex-1 flex overflow-hidden">
-    <!-- 3D Canvas Viewport -->
-    <div class="flex-1 relative bg-black flex items-center justify-center">
+    <!-- Viewport Area -->
+    <div class="flex-1 relative bg-black flex flex-col items-center justify-center">
+      <!-- 3D Canvas -->
       <div id="canvas-container" class="w-full h-full"></div>
-      
-      <!-- Overlay Instructions -->
-      <div class="absolute bottom-4 left-4 bg-gray-900/70 backdrop-blur-md px-3 py-1.5 rounded-lg border border-gray-800 text-xs text-gray-400 flex items-center gap-2 pointer-events-none select-none">
-        <i data-lucide="mouse-pointer" class="w-3.5 h-3.5 text-indigo-400"></i>
-        <span>Drag to rotate 360° | Scroll to zoom</span>
+
+      <!-- Dropzone / Empty State Overlay -->
+      <div id="dropzone" class="absolute inset-0 bg-gray-950/80 backdrop-blur-sm flex flex-col items-center justify-center p-6 border-2 border-dashed border-gray-700 hover:border-cyan-500 transition cursor-pointer">
+        <div class="w-16 h-16 rounded-2xl bg-gray-800/80 border border-gray-700 flex items-center justify-center mb-4 text-cyan-400">
+          <i data-lucide="cloud-upload" class="w-8 h-8"></i>
+        </div>
+        <h3 class="text-base font-bold text-white mb-1">Upload 360° Panorama Image</h3>
+        <p class="text-xs text-gray-400 mb-4 text-center max-w-sm">Drag & drop your 2:1 Equirectangular / HDRI sky image here, or click to browse (JPG / PNG / WebP).</p>
+        
+        <input type="file" id="fileInput" accept="image/*" class="hidden" />
+        
+        <div class="flex items-center gap-2">
+          <button onclick="document.getElementById('fileInput').click()" class="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg text-xs font-semibold transition flex items-center gap-1.5 shadow-lg shadow-cyan-600/30">
+            <i data-lucide="folder-open" class="w-4 h-4"></i> Choose File
+          </button>
+          <button id="sampleBtn" class="px-3 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg text-xs font-medium border border-gray-700 transition">
+            Load Demo Sunset 360°
+          </button>
+        </div>
       </div>
 
-      <!-- Quick Preset Selector -->
-      <div class="absolute top-4 left-4 bg-gray-900/80 backdrop-blur-md px-3 py-2 rounded-lg border border-gray-800 flex items-center gap-2">
-        <span class="text-xs font-medium text-gray-400">Presets:</span>
-        <button onclick="applyPreset('nebula')" class="text-xs px-2 py-1 bg-gray-800 hover:bg-indigo-600 hover:text-white rounded text-gray-300 transition">Nebula</button>
-        <button onclick="applyPreset('sunset')" class="text-xs px-2 py-1 bg-gray-800 hover:bg-indigo-600 hover:text-white rounded text-gray-300 transition">Sunset</button>
-        <button onclick="applyPreset('daylight')" class="text-xs px-2 py-1 bg-gray-800 hover:bg-indigo-600 hover:text-white rounded text-gray-300 transition">Daylight</button>
+      <!-- Instruction Badge -->
+      <div id="dragHint" class="hidden absolute bottom-4 left-4 bg-gray-900/80 backdrop-blur px-3 py-1.5 rounded-lg border border-gray-800 text-xs text-gray-400 flex items-center gap-2 pointer-events-none select-none">
+        <i data-lucide="mouse-pointer" class="w-3.5 h-3.5 text-cyan-400"></i>
+        <span>360° Preview: Drag mouse to inspect seams</span>
       </div>
+
+      <!-- Change Image Floating Button -->
+      <button id="reuploadBtn" class="hidden absolute top-4 left-4 bg-gray-900/80 hover:bg-gray-800 backdrop-blur text-xs px-3 py-1.5 rounded-lg border border-gray-700 text-gray-300 transition flex items-center gap-1.5">
+        <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i> Change Panorama
+      </button>
     </div>
 
-    <!-- Sidebar: 6 Faces Texture Settings -->
+    <!-- Right Sidebar: 6 Slices Result -->
     <aside class="w-96 border-l border-gray-800 bg-gray-900/90 backdrop-blur flex flex-col custom-scrollbar overflow-y-auto">
-      <div class="p-4 border-b border-gray-800">
-        <h2 class="text-sm font-semibold text-white flex items-center gap-2">
-          <i data-lucide="layers" class="w-4 h-4 text-indigo-400"></i> Skybox Faces (6-Sided)
-        </h2>
-        <p class="text-xs text-gray-400 mt-0.5">Upload image files or enter Roblox Asset IDs.</p>
+      <div class="p-4 border-b border-gray-800 flex items-center justify-between">
+        <div>
+          <h2 class="text-sm font-semibold text-white flex items-center gap-2">
+            <i data-lucide="box" class="w-4 h-4 text-cyan-400"></i> Roblox Slices (6 Faces)
+          </h2>
+          <p class="text-[11px] text-gray-400 mt-0.5">Automated seam-free cubemap output.</p>
+        </div>
+        <span id="statusBadge" class="text-[10px] bg-gray-800 text-gray-400 px-2 py-0.5 rounded font-mono">Idle</span>
       </div>
 
-      <div class="p-4 space-y-4">
-        <!-- Face Item Template Function will populate or manual list -->
-        <div id="facesList" class="space-y-3"></div>
+      <div class="p-4 space-y-3">
+        <!-- 6 Faces Cards -->
+        <div id="cardsList" class="space-y-2.5">
+          <!-- Populated by JS -->
+        </div>
       </div>
     </aside>
-  </div>
-
-  <!-- Export Modal -->
-  <div id="codeModal" class="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex items-center justify-center hidden">
-    <div class="bg-gray-900 border border-gray-800 w-full max-w-xl rounded-xl shadow-2xl overflow-hidden flex flex-col">
-      <div class="px-5 py-4 border-b border-gray-800 flex items-center justify-between">
-        <div class="flex items-center gap-2">
-          <i data-lucide="file-code" class="w-5 h-5 text-indigo-400"></i>
-          <h3 class="text-sm font-semibold text-white">Roblox Luau Sky Script</h3>
-        </div>
-        <button id="closeModalBtn" class="text-gray-400 hover:text-white transition">
-          <i data-lucide="x" class="w-5 h-5"></i>
-        </button>
-      </div>
-      <div class="p-5">
-        <p class="text-xs text-gray-400 mb-2">Paste this script into a ServerScript inside <code class="text-indigo-300">ServerScriptService</code>:</p>
-        <div class="relative">
-          <pre id="luauCode" class="bg-gray-950 p-4 rounded-lg text-xs font-mono text-emerald-400 overflow-x-auto border border-gray-800 max-h-60 custom-scrollbar"></pre>
-        </div>
-      </div>
-      <div class="px-5 py-3.5 bg-gray-950/60 border-t border-gray-800 flex justify-end gap-2">
-        <button id="copyCodeBtn" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-medium flex items-center gap-1.5 transition">
-          <i data-lucide="copy" class="w-3.5 h-3.5"></i> Copy to Clipboard
-        </button>
-      </div>
-    </div>
   </div>
 
   <script>
     lucide.createIcons();
 
-    // 6 Skybox Faces definition
     const faces = [
-      { id: 'SkyboxFt', name: 'Front (Ft)', threeIndex: 4 },
-      { id: 'SkyboxBk', name: 'Back (Bk)', threeIndex: 5 },
-      { id: 'SkyboxUp', name: 'Top / Up (Up)', threeIndex: 2 },
-      { id: 'SkyboxDn', name: 'Bottom / Down (Dn)', threeIndex: 3 },
-      { id: 'SkyboxRt', name: 'Right (Rt)', threeIndex: 0 },
-      { id: 'SkyboxLf', name: 'Left (Lf)', threeIndex: 1 }
+      { id: 'SkyboxFt', name: 'Front Face (Ft)', rot: { x: 0, y: 0 } },
+      { id: 'SkyboxBk', name: 'Back Face (Bk)', rot: { x: 0, y: Math.PI } },
+      { id: 'SkyboxLf', name: 'Left Face (Lf)', rot: { x: 0, y: Math.PI / 2 } },
+      { id: 'SkyboxRt', name: 'Right Face (Rt)', rot: { x: 0, y: -Math.PI / 2 } },
+      { id: 'SkyboxUp', name: 'Top Face (Up)', rot: { x: -Math.PI / 2, y: 0 } },
+      { id: 'SkyboxDn', name: 'Bottom Face (Dn)', rot: { x: Math.PI / 2, y: 0 } }
     ];
 
-    const faceData = {};
-    faces.forEach(f => {
-      faceData[f.id] = { assetId: '', dataUrl: null };
-    });
+    const faceBlobs = {};
 
-    // Render Face Controls in Sidebar
-    const facesListEl = document.getElementById('facesList');
+    // Render 6 Slices placeholders
+    const cardsList = document.getElementById('cardsList');
     faces.forEach(f => {
       const card = document.createElement('div');
-      card.className = 'bg-gray-800/60 p-3 rounded-lg border border-gray-700/60 space-y-2';
+      card.className = 'bg-gray-800/60 p-2.5 rounded-lg border border-gray-700/60 flex items-center gap-3';
       card.innerHTML = `
-        <div class="flex items-center justify-between">
-          <span class="text-xs font-medium text-white flex items-center gap-1.5">
-            <span class="w-2 h-2 rounded-full bg-indigo-500"></span> ${f.name}
-          </span>
-          <span class="text-[10px] text-gray-400 uppercase font-mono">${f.id}</span>
+        <div id="thumb-${f.id}" class="w-14 h-14 bg-gray-950 rounded border border-gray-700 flex items-center justify-center overflow-hidden flex-shrink-0 text-gray-600">
+          <i data-lucide="image" class="w-4 h-4"></i>
         </div>
-        <div class="flex gap-2">
-          <div id="thumb-${f.id}" class="w-12 h-12 bg-gray-950 rounded border border-gray-700 flex items-center justify-center overflow-hidden flex-shrink-0 text-gray-600">
-            <i data-lucide="image" class="w-4 h-4"></i>
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-semibold text-white truncate">${f.name}</span>
+            <span class="text-[10px] text-cyan-400 font-mono">${f.id}</span>
           </div>
-          <div class="flex-1 space-y-1.5">
-            <input type="text" id="input-${f.id}" placeholder="rbxassetid:// or URL" class="w-full bg-gray-950 text-xs px-2.5 py-1.5 rounded border border-gray-700 focus:outline-none focus:border-indigo-500 text-gray-200" />
-            <div class="flex gap-1.5">
-              <label class="cursor-pointer bg-gray-700 hover:bg-gray-600 text-gray-200 text-[11px] px-2 py-1 rounded transition flex items-center gap-1">
-                <i data-lucide="upload" class="w-3 h-3"></i> Upload
-                <input type="file" accept="image/*" class="hidden" onchange="handleFileUpload(event, '${f.id}')" />
-              </label>
-            </div>
+          <p id="dim-${f.id}" class="text-[10px] text-gray-500 mt-0.5">Not generated</p>
+          <div class="mt-1.5 flex gap-2">
+            <button id="dl-${f.id}" disabled onclick="downloadSingle('${f.id}')" class="text-[11px] text-gray-500 bg-gray-800 px-2 py-0.5 rounded cursor-not-allowed transition flex items-center gap-1">
+              <i data-lucide="download" class="w-3 h-3"></i> Download
+            </button>
           </div>
         </div>
       `;
-      facesListEl.appendChild(card);
+      cardsList.appendChild(card);
     });
+    lucide.createIcons();
 
-    // Setup Three.js Scene
+    // 3D Scene Setup for Preview
     const container = document.getElementById('canvas-container');
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(75, container.clientWidth / container.clientHeight, 0.1, 1000);
     camera.position.set(0, 0, 0.1);
 
-    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
     renderer.setSize(container.clientWidth, container.clientHeight);
-    renderer.setPixelRatio(window.devicePixelRatio);
     container.appendChild(renderer.domElement);
 
     const controls = new THREE.OrbitControls(camera, renderer.domElement);
@@ -178,16 +159,7 @@
     controls.enablePan = false;
     controls.rotateSpeed = -0.3;
 
-    // Materials array for Skybox cube
-    const materials = [];
-    const colors = [0x1f2937, 0x111827, 0x374151, 0x1f2937, 0x111827, 0x374151];
-    for (let i = 0; i < 6; i++) {
-      materials.push(new THREE.MeshBasicMaterial({ color: colors[i], side: THREE.BackSide }));
-    }
-
-    const skyboxGeo = new THREE.BoxGeometry(100, 100, 100);
-    const skyboxMesh = new THREE.Mesh(skyboxGeo, materials);
-    scene.add(skyboxMesh);
+    let sphereMesh = null;
 
     function animate() {
       requestAnimationFrame(animate);
@@ -202,76 +174,173 @@
       renderer.setSize(container.clientWidth, container.clientHeight);
     });
 
-    // Update face texture in 3D scene
-    function updateFaceTexture(faceId, imageUrl) {
-      const faceDef = faces.find(f => f.id === faceId);
-      if (!faceDef) return;
+    // File Handlers
+    const dropzone = document.getElementById('dropzone');
+    const fileInput = document.getElementById('fileInput');
 
-      const loader = new THREE.TextureLoader();
-      loader.load(imageUrl, (texture) => {
-        texture.wrapS = THREE.ClampToEdgeWrapping;
-        texture.wrapT = THREE.ClampToEdgeWrapping;
-        materials[faceDef.threeIndex].map = texture;
-        materials[faceDef.threeIndex].needsUpdate = true;
+    dropzone.addEventListener('click', (e) => {
+      if (e.target.id !== 'sampleBtn') fileInput.click();
+    });
+    fileInput.addEventListener('change', (e) => {
+      if (e.target.files && e.target.files[0]) processPanorama(e.target.files[0]);
+    });
 
-        const thumb = document.getElementById(`thumb-${faceId}`);
-        thumb.innerHTML = `<img src="${imageUrl}" class="w-full h-full object-cover" />`;
-      });
+    document.getElementById('reuploadBtn').addEventListener('click', () => fileInput.click());
+
+    // Drag and Drop
+    window.addEventListener('dragover', (e) => e.preventDefault());
+    window.addEventListener('drop', (e) => {
+      e.preventDefault();
+      if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+        processPanorama(e.dataTransfer.files[0]);
+      }
+    });
+
+    // Demo Sample Generator (Creates an artistic sunset 360 gradient)
+    document.getElementById('sampleBtn').addEventListener('click', (e) => {
+      e.stopPropagation();
+      const sampleCanvas = document.createElement('canvas');
+      sampleCanvas.width = 2048;
+      sampleCanvas.height = 1024;
+      const ctx = sampleCanvas.getContext('2d');
+
+      // Sky Gradient
+      const grad = ctx.createLinearGradient(0, 0, 0, sampleCanvas.height);
+      grad.addColorStop(0, '#0c1b33');
+      grad.addColorStop(0.4, '#1f3b73');
+      grad.addColorStop(0.65, '#e0533c');
+      grad.addColorStop(0.75, '#f59e0b');
+      grad.addColorStop(0.9, '#3b1c32');
+      grad.addColorStop(1, '#11091a');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, sampleCanvas.width, sampleCanvas.height);
+
+      // Sun
+      ctx.fillStyle = '#ffedd5';
+      ctx.beginPath();
+      ctx.arc(1024, 700, 60, 0, Math.PI * 2);
+      ctx.fill();
+
+      sampleCanvas.toBlob((blob) => {
+        processPanorama(blob);
+      }, 'image/jpeg');
+    });
+
+    // Main Processing Pipeline
+    function processPanorama(fileOrBlob) {
+      document.getElementById('statusBadge').textContent = 'Slicing...';
+      document.getElementById('statusBadge').className = 'text-[10px] bg-yellow-900/60 text-yellow-400 px-2 py-0.5 rounded font-mono';
+
+      const img = new Image();
+      const objectUrl = URL.createObjectURL(fileOrBlob);
+      img.src = objectUrl;
+
+      img.onload = () => {
+        // Setup 3D Sphere for Live View
+        const texture = new THREE.Texture(img);
+        texture.needsUpdate = true;
+        if (sphereMesh) scene.remove(sphereMesh);
+
+        const sphereGeo = new THREE.SphereGeometry(100, 64, 32);
+        sphereGeo.scale(-1, 1, 1); // Invert inside-out
+        const sphereMat = new THREE.MeshBasicMaterial({ map: texture });
+        sphereMesh = new THREE.Mesh(sphereGeo, sphereMat);
+        scene.add(sphereMesh);
+
+        // Hide Dropzone
+        dropzone.classList.add('hidden');
+        document.getElementById('dragHint').classList.remove('hidden');
+        document.getElementById('reuploadBtn').classList.remove('hidden');
+
+        // Slice into 6 Faces
+        sliceToCubemap(img);
+      };
     }
 
-    // File Upload Handler
-    window.handleFileUpload = function(event, faceId) {
-      const file = event.target.files[0];
-      if (!file) return;
+    // Cubemap Slicer using Slicing Canvas
+    function sliceToCubemap(img) {
+      const targetSize = parseInt(document.getElementById('resSelect').value, 10);
+      const sliceCanvas = document.createElement('canvas');
+      sliceCanvas.width = targetSize;
+      sliceCanvas.height = targetSize;
 
-      const reader = new FileReader();
-      reader.onload = function(e) {
-        faceData[faceId].dataUrl = e.target.result;
-        updateFaceTexture(faceId, e.target.result);
-      };
-      reader.readAsDataURL(file);
+      // Offscreen Three.js Renderer for perfect 90° FOV perspective renders
+      const sliceRenderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+      sliceRenderer.setSize(targetSize, targetSize);
+
+      const sliceScene = new THREE.Scene();
+      const texture = new THREE.Texture(img);
+      texture.needsUpdate = true;
+      const sphereGeo = new THREE.SphereGeometry(10, 64, 32);
+      sphereGeo.scale(-1, 1, 1);
+      const sphereMat = new THREE.MeshBasicMaterial({ map: texture });
+      sliceScene.add(new THREE.Mesh(sphereGeo, sphereMat));
+
+      const sliceCamera = new THREE.PerspectiveCamera(90, 1, 0.1, 100);
+
+      faces.forEach((f) => {
+        sliceCamera.rotation.set(0, 0, 0);
+        // Correct Roblox Face Orientations
+        if (f.id === 'SkyboxFt') {
+          sliceCamera.rotation.set(0, 0, 0);
+        } else if (f.id === 'SkyboxBk') {
+          sliceCamera.rotation.set(0, Math.PI, 0);
+        } else if (f.id === 'SkyboxLf') {
+          sliceCamera.rotation.set(0, Math.PI / 2, 0);
+        } else if (f.id === 'SkyboxRt') {
+          sliceCamera.rotation.set(0, -Math.PI / 2, 0);
+        } else if (f.id === 'SkyboxUp') {
+          sliceCamera.rotation.set(Math.PI / 2, 0, Math.PI);
+        } else if (f.id === 'SkyboxDn') {
+          sliceCamera.rotation.set(-Math.PI / 2, 0, Math.PI);
+        }
+
+        sliceRenderer.render(sliceScene, sliceCamera);
+
+        // Extract Blob
+        sliceRenderer.domElement.toBlob((blob) => {
+          faceBlobs[f.id] = blob;
+          const url = URL.createObjectURL(blob);
+
+          // Update UI Card
+          const thumb = document.getElementById(`thumb-${f.id}`);
+          thumb.innerHTML = `<img src="${url}" class="w-full h-full object-cover" />`;
+          document.getElementById(`dim-${f.id}`).textContent = `${targetSize} × ${targetSize} PNG`;
+
+          const dlBtn = document.getElementById(`dl-${f.id}`);
+          dlBtn.disabled = false;
+          dlBtn.className = 'text-[11px] text-cyan-400 bg-gray-800 hover:bg-cyan-600 hover:text-white px-2 py-0.5 rounded transition flex items-center gap-1';
+        }, 'image/png');
+      });
+
+      // Enable Download All Button
+      const zipBtn = document.getElementById('downloadZipBtn');
+      zipBtn.disabled = false;
+      zipBtn.className = 'px-4 py-1.5 text-xs font-semibold text-white bg-cyan-600 hover:bg-cyan-500 rounded-md transition flex items-center gap-1.5 shadow-md shadow-cyan-600/30';
+
+      document.getElementById('statusBadge').textContent = 'Ready';
+      document.getElementById('statusBadge').className = 'text-[10px] bg-emerald-900/60 text-emerald-400 px-2 py-0.5 rounded font-mono';
+    }
+
+    // Download Single Face
+    window.downloadSingle = function(faceId) {
+      if (faceBlobs[faceId]) {
+        saveAs(faceBlobs[faceId], `${faceId}.png`);
+      }
     };
 
-    // Asset ID Input Listeners
-    faces.forEach(f => {
-      const input = document.getElementById(`input-${f.id}`);
-      input.addEventListener('change', (e) => {
-        let val = e.target.value.trim();
-        faceData[f.id].assetId = val;
-        if (val.startsWith('http')) {
-          updateFaceTexture(f.id, val);
+    // Download All as ZIP
+    document.getElementById('downloadZipBtn').addEventListener('click', () => {
+      const zip = new JSZip();
+      faces.forEach(f => {
+        if (faceBlobs[f.id]) {
+          zip.file(`${f.id}.png`, faceBlobs[f.id]);
         }
       });
-    });
 
-    // Camera Reset
-    document.getElementById('resetCamBtn').addEventListener('click', () => {
-      camera.position.set(0, 0, 0.1);
-      controls.reset();
-    });
-
-    // Presets
-    window.applyPreset = function(type) {
-      const presetColors = {
-        nebula: [0x150030, 0x050015, 0x3b0764, 0x030712, 0x1e1b4b, 0x2e1065],
-        sunset: [0x9a3412, 0x7c2d12, 0xf97316, 0x431407, 0xc2410c, 0xea580c],
-        daylight: [0x38bdf8, 0x0ea5e9, 0x7dd3fc, 0x0284c7, 0x60a5fa, 0x0369a1]
-      };
-      const palette = presetColors[type] || presetColors.nebula;
-      materials.forEach((m, idx) => {
-        m.map = null;
-        m.color.setHex(palette[idx]);
-        m.needsUpdate = true;
-      });
-    };
-
-    // Export Luau Code
-    const codeModal = document.getElementById('codeModal');
-    const luauCodeEl = document.getElementById('luauCode');
-
-    document.getElementById('exportCodeBtn').addEventListener('click', () => {
-      const code = `--!strict
--- Generated with Roblox Skybox Studio
+      // Add a Luau helper script into the zip
+      const luauSnippet = `--!strict
+-- Roblox Skybox Loader
 local Lighting = game:GetService("Lighting")
 
 local existingSky = Lighting:FindFirstChildOfClass("Sky")
@@ -281,28 +350,21 @@ end
 
 local sky = Instance.new("Sky")
 sky.Name = "CustomSkybox"
-sky.SkyboxBk = "${faceData.SkyboxBk.assetId || 'rbxassetid://0'}"
-sky.SkyboxDn = "${faceData.SkyboxDn.assetId || 'rbxassetid://0'}"
-sky.SkyboxFt = "${faceData.SkyboxFt.assetId || 'rbxassetid://0'}"
-sky.SkyboxLf = "${faceData.SkyboxLf.assetId || 'rbxassetid://0'}"
-sky.SkyboxRt = "${faceData.SkyboxRt.assetId || 'rbxassetid://0'}"
-sky.SkyboxUp = "${faceData.SkyboxUp.assetId || 'rbxassetid://0'}"
+-- Upload the 6 PNG files to Roblox Asset Manager (Images) and replace IDs below:
+sky.SkyboxBk = "rbxassetid://YOUR_BACK_ID"
+sky.SkyboxDn = "rbxassetid://YOUR_DOWN_ID"
+sky.SkyboxFt = "rbxassetid://YOUR_FRONT_ID"
+sky.SkyboxLf = "rbxassetid://YOUR_LEFT_ID"
+sky.SkyboxRt = "rbxassetid://YOUR_RIGHT_ID"
+sky.SkyboxUp = "rbxassetid://YOUR_UP_ID"
 sky.CelestialBodiesShown = true
 sky.Parent = Lighting
+print("[Skybox Studio] Applied successfully!")`;
 
-print("[Roblox Skybox Studio] Skybox successfully loaded!")`;
+      zip.file('SetupSkybox.luau', luauSnippet);
 
-      luauCodeEl.textContent = code;
-      codeModal.classList.remove('hidden');
-    });
-
-    document.getElementById('closeModalBtn').addEventListener('click', () => {
-      codeModal.classList.add('hidden');
-    });
-
-    document.getElementById('copyCodeBtn').addEventListener('click', () => {
-      navigator.clipboard.writeText(luauCodeEl.textContent).then(() => {
-        alert('Luau script copied to clipboard!');
+      zip.generateAsync({ type: 'blob' }).then((content) => {
+        saveAs(content, 'Roblox_Skybox_Faces.zip');
       });
     });
   </script>
