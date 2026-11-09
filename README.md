@@ -126,3 +126,13 @@ Issue dan PR dipersilakan. Proyek ini sengaja dibuat tanpa dependency/build step
 
 ## Lisensi
 MIT — lihat [LICENSE](LICENSE).
+
+
+## Gambar 2D biasa → skybox (otomatis)
+
+Pengguna cukup mengunggah gambar biasa (foto, render, atau hasil AI berbentuk persegi panjang).
+Jika rasionya bukan 2:1, Studio otomatis mengubahnya menjadi panorama 360° (`js/flat2pano.js`):
+gambar ditempatkan di depan kamera dengan proyeksi perspektif (objek tidak melar), sisanya diisi
+dari warna gambar dan menyambung di sekeliling 360°. Pengaturan di panel "Gambar 2D → Panorama":
+jenis isi (Pemandangan / Langit), lebar sudut pandang, geser naik/turun, dan pelembutan tepi.
+Gambar 2:1 dianggap panorama equirectangular, dan bisa diganti manual lewat tombol "Gambar 2D biasa".

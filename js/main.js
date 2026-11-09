@@ -281,13 +281,118 @@
     const img = new Image();
     img.onload = () => {
       URL.revokeObjectURL(url);
-      setImage(img, img.naturalWidth, img.naturalHeight, file.name, file.size);
+      handleNewImage(img, img.naturalWidth, img.naturalHeight, file.name, file.size);
     };
     img.onerror = () => {
       URL.revokeObjectURL(url);
       addBanner('error', 'Gagal memuat gambar "' + file.name + '". Berkas rusak atau tidak didukung.');
     };
     img.src = url;
+  }
+
+
+  // ---------- Gambar 2D biasa -> panorama 360° otomatis ----------
+  const flat = { src: null, w: 0, h: 0, name: '', size: null, mode: '2d', kind: 'scene', fov: 100, offset: 0, edge: 18 };
+  let flatTimer = null, flatToken = 0;
+
+  function flatPitch() {
+    if (flat.kind !== 'sky') return flat.offset;
+    const vfov = 2 * Math.atan(Math.tan(flat.fov * Math.PI / 360) * flat.h / flat.w) * 180 / Math.PI;
+    return vfov / 2 + flat.offset;
+  }
+
+  function showFlatPanel(on) {
+    $('grpFlat').hidden = !on;
+    $('flatCtl').hidden = !on || flat.mode !== '2d';
+  }
+
+  function applyFlat() {
+    if (!flat.src) return;
+    if (flat.mode === 'pano') {
+      setImage(flat.src, flat.w, flat.h, flat.name, flat.size, { skipRatioCheck: true });
+      return;
+    }
+    const token = ++flatToken;
+    const note = $('flatNote');
+    note.textContent = 'Memproses panorama…';
+    setTimeout(() => {
+      if (token !== flatToken) return;
+      try {
+        const c = window.Flat2Pano.convert(flat.src, flat.w, flat.h, {
+          fov: flat.fov, pitch: flatPitch(), edge: flat.edge, maxW: Math.min(4096, GL.getMaxTex())
+        });
+        if (token !== flatToken) return;
+        setImage(c, c.width, c.height, flat.name + ' [2D→360°]', flat.size, { skipRatioCheck: true });
+        note.textContent = 'Gambar ditempatkan di depan kamera tanpa melar, sisanya diisi otomatis dari warna gambar dan menyambung 360°.';
+      } catch (e) {
+        note.textContent = '';
+        addBanner('error', 'Gagal mengubah gambar 2D menjadi panorama: ' + e.message);
+      }
+    }, 30);
+  }
+
+  function scheduleFlat() {
+    clearTimeout(flatTimer);
+    flatTimer = setTimeout(applyFlat, 250);
+  }
+
+  function handleNewImage(src, w, h, name, size) {
+    clearBanners();
+    flat.src = src; flat.w = w; flat.h = h; flat.name = name; flat.size = size;
+    const ratio = w / h;
+    flat.mode = Math.abs(ratio - 2.0) / 2.0 <= 0.05 ? 'pano' : '2d';
+    syncFlatUI();
+    showFlatPanel(true);
+    applyFlat();
+  }
+
+  function clearFlat() {
+    flat.src = null; flatToken++;
+    showFlatPanel(false);
+  }
+
+  function makeFlatSeg(root, items, getCur, onPick) {
+    root.textContent = '';
+    items.forEach(it => {
+      const b = document.createElement('button'); b.type = 'button'; b.textContent = it.label;
+      b.addEventListener('click', () => { onPick(it.v); refresh(); });
+      root.appendChild(b);
+    });
+    function refresh() {
+      Array.from(root.children).forEach((b, i) => b.setAttribute('aria-pressed', String(items[i].v === getCur())));
+    }
+    refresh();
+    return refresh;
+  }
+
+  const refreshMode = makeFlatSeg($('segMode'),
+    [{ label: 'Gambar 2D biasa', v: '2d' }, { label: 'Panorama 360°', v: 'pano' }],
+    () => flat.mode, v => { flat.mode = v; $('flatCtl').hidden = v !== '2d'; applyFlat(); });
+  const refreshKind = makeFlatSeg($('segKind'),
+    [{ label: 'Pemandangan', v: 'scene' }, { label: 'Langit (di atas horizon)', v: 'sky' }],
+    () => flat.kind, v => { flat.kind = v; scheduleFlat(); });
+
+  const flatSliders = {};
+  function addFlatSlider(key, label, min, max, step, unit) {
+    const wrap = document.createElement('div'); wrap.className = 'slider';
+    const lab = document.createElement('label'); lab.htmlFor = 'fs_' + key; lab.textContent = label;
+    const out = document.createElement('output'); out.htmlFor = 'fs_' + key;
+    const inp = document.createElement('input'); inp.type = 'range'; inp.id = 'fs_' + key;
+    inp.min = min; inp.max = max; inp.step = step; inp.value = flat[key];
+    const show = () => { out.textContent = flat[key] + unit; };
+    inp.addEventListener('input', () => { flat[key] = Number(inp.value); show(); scheduleFlat(); });
+    wrap.appendChild(lab); wrap.appendChild(out); wrap.appendChild(inp);
+    $('grpFlatSliders').appendChild(wrap);
+    flatSliders[key] = { inp, show };
+    show();
+  }
+  addFlatSlider('fov', 'Lebar sudut pandang gambar', 40, 150, 1, '°');
+  addFlatSlider('offset', 'Geser naik / turun', -40, 40, 1, '°');
+  addFlatSlider('edge', 'Pelembutan tepi gambar', 0, 30, 1, '%');
+
+  function syncFlatUI() {
+    refreshMode(); refreshKind();
+    $('flatCtl').hidden = flat.mode !== '2d';
   }
 
   window.addEventListener('paste', e => {
@@ -492,6 +597,7 @@
   $('btnTest').addEventListener('click', () => {
     setSlider('seamBlend', 0);
     const c = window.makeTestPanorama();
+    clearFlat();
     setImage(c, c.width, c.height, 'Gambar Uji', null, { skipRatioCheck: true });
   });
 
@@ -584,7 +690,7 @@
 
   window.MainApp = {
     addBanner,
-    loadPanorama: (c, name) => { setImage(c, c.width, c.height, name, null, { skipRatioCheck: true }); switchTab('cross'); },
+    loadPanorama: (c, name) => { clearFlat(); setImage(c, c.width, c.height, name, null, { skipRatioCheck: true }); switchTab('cross'); },
     onGLContextLost: () => {
       if (!glLostBanner) {
         glLostBanner = addBanner('error', 'Konteks WebGL hilang. Memulihkan grafis...');
