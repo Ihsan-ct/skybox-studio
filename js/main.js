@@ -232,6 +232,7 @@
     if (ew !== w || eh !== h) info += ` (GPU: ${ew}×${eh} px)`;
     $('fileinfo').textContent = info;
     $('empty').hidden = true;
+    const pk = document.getElementById('panel-konversi'); if (pk) pk.classList.remove('no-img');
     $('btnZip').disabled = false;
     document.querySelectorAll('#facebtns button').forEach(b => b.disabled = false);
 
@@ -789,6 +790,10 @@
   }
 
   $('mirrorDn').addEventListener('change', e => { state.mirrorDn = e.target.checked; requestRender(); });
+
+  // Inisialisasi tab default (Konversi): siapkan preview 3D sejak awal supaya
+  // langit contoh / gambar pertama langsung tampil tanpa perlu klik tab dulu.
+  switchTab('konversi');
 
   // ---------- Paket Ganti-Langit (dari riwayat upload) ----------
   // Satu .rbxmx berisi folder SkyboxSets (satu Sky per skybox pilihan) + script
