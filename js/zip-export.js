@@ -22,11 +22,16 @@ window.ZipExport = (function () {
   }
 
   async function exportOne(face, state, setStatus) {
-    setStatus('Merender ' + face.name + ' (' + state.exportRes + 'px)…'); await tick();
+    setStatus({ text: 'Merender ' + face.name + ' (' + state.exportRes + 'px)…' }); await tick();
     const blob = await renderFaceCanvas(face, state.exportRes, state);
     const fileName = 'Skybox' + face.k + '.png';
     const blobUrl = downloadBlob(blob, fileName);
-    setStatus(`Ekspor ${fileName} selesai! Jika tidak otomatis mengunduh, <a href="${blobUrl}" download="${fileName}">klik di sini untuk mengunduh manual</a>.`);
+    setStatus({
+      text: 'Ekspor ' + fileName + ' selesai! Jika tidak otomatis mengunduh,',
+      linkUrl: blobUrl,
+      linkLabel: 'klik di sini untuk mengunduh manual.',
+      download: fileName
+    });
   }
 
   async function exportZip(state, setStatus) {
@@ -36,16 +41,21 @@ window.ZipExport = (function () {
     const t0 = performance.now();
     for (let i = 0; i < GL.FACES.length; i++) {
       const f = GL.FACES[i];
-      setStatus('Merender ' + f.name + ' (' + (i + 1) + '/6)…'); await tick();
+      setStatus({ text: 'Merender ' + f.name + ' (' + (i + 1) + '/6)…' }); await tick();
       const blob = await renderFaceCanvas(f, state.exportRes, state);
       zip.file('Skybox' + f.k + '.png', blob);
     }
-    setStatus('Menyusun berkas ZIP…'); await tick();
+    setStatus({ text: 'Menyusun berkas ZIP…' }); await tick();
     const content = await zip.generateAsync({ type: 'blob', compression: 'STORE' });
     const zipName = 'RobloxSkybox_' + state.exportRes + '.zip';
     const blobUrl = downloadBlob(content, zipName);
     const sec = ((performance.now() - t0) / 1000).toFixed(1);
-    setStatus(`Ekspor ZIP selesai dalam ${sec}s! Jika tidak otomatis mengunduh, <a href="${blobUrl}" download="${zipName}">klik di sini untuk mengunduh manual</a>.`);
+    setStatus({
+      text: `Ekspor ZIP selesai dalam ${sec}s! Jika tidak otomatis mengunduh,`,
+      linkUrl: blobUrl,
+      linkLabel: 'klik di sini untuk mengunduh manual.',
+      download: zipName
+    });
   }
 
   return { exportOne, exportZip };

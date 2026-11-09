@@ -89,8 +89,8 @@ window.GLConvert = (function () {
 
     glCanvas.addEventListener('webglcontextlost', e => {
       e.preventDefault();
-      if (window.MainApp && window.MainApp.addBanner) {
-        window.MainApp.addBanner('error', 'Konteks WebGL hilang. Memulihkan grafis...');
+      if (window.MainApp && window.MainApp.onGLContextLost) {
+        window.MainApp.onGLContextLost();
       }
     });
 
@@ -135,12 +135,14 @@ window.GLConvert = (function () {
   }
 
   function hexToRgb(hex) {
-    if (!hex || typeof hex !== 'string') return [0.5, 0.5, 0.5];
-    const c = hex.replace('#', '');
-    if (c.length === 3) {
-      return [parseInt(c[0] + c[0], 16) / 255, parseInt(c[1] + c[1], 16) / 255, parseInt(c[2] + c[2], 16) / 255];
+    if (typeof hex !== 'string' || !/^#[0-9a-fA-F]{6}$/.test(hex)) {
+      return [0.5, 0.5, 0.5];
     }
-    return [parseInt(c.substring(0, 2), 16) / 255, parseInt(c.substring(2, 4), 16) / 255, parseInt(c.substring(4, 6), 16) / 255];
+    const r = parseInt(hex.substring(1, 3), 16) / 255;
+    const g = parseInt(hex.substring(3, 5), 16) / 255;
+    const b = parseInt(hex.substring(5, 7), 16) / 255;
+    if (isNaN(r) || isNaN(g) || isNaN(b)) return [0.5, 0.5, 0.5];
+    return [r, g, b];
   }
 
   function drawFace(face, n, state) {
@@ -183,7 +185,7 @@ window.GLConvert = (function () {
   }
 
   return {
-    FACES, glCanvas, initGL, uploadTexture, setSize, drawFace, applyWatermark,
+    FACES, glCanvas, initGL, uploadTexture, setSize, drawFace, applyWatermark, hexToRgb,
     getMaxTex: () => maxTex,
     toBlob: () => new Promise((res, rej) => glCanvas.toBlob(b => b ? res(b) : rej(new Error('toBlob menghasilkan null')), 'image/png'))
   };

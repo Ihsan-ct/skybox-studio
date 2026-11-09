@@ -43,7 +43,6 @@
       <button id="btnZip" class="primary" type="button" disabled>Unduh ZIP</button>
     </div>
 
-    <!-- Panel 1: Cross Net -->
     <div id="panel-cross" role="tabpanel" aria-labelledby="tab-cross">
       <div class="stage">
         <canvas id="cross" width="1024" height="768" aria-label="Preview 6 sisi skybox dalam susunan cross"></canvas>
@@ -53,7 +52,6 @@
       <div id="status" role="status" aria-live="polite"></div>
     </div>
 
-    <!-- Panel 2: Preview 3D -->
     <div id="panel-3d" role="tabpanel" aria-labelledby="tab-3d" hidden>
       <div class="stage" id="stage3d"></div>
       <div class="row" style="margin-top:8px; align-items:center; gap:14px;">
@@ -67,7 +65,6 @@
       </div>
     </div>
 
-    <!-- Panel 3: Script Luau -->
     <div id="panel-luau" role="tabpanel" aria-labelledby="tab-luau" hidden>
       <p style="margin-top:0">Isi Image ID tiap sisi (angka saja) setelah kamu mengunggahnya ke Roblox.</p>
       <div id="idfields"></div>
@@ -80,14 +77,14 @@
         <h4>Panduan Memasang Skybox ke Roblox</h4>
         <ol>
           <li><strong>Unggah Gambar:</strong> Di Roblox Studio, buka <em>View &gt; Asset Manager &gt; Images</em> lalu unggah keenam file PNG hasil unduhan.</li>
-          <li><strong>Gunakan Image ID (Bukan Decal ID):</strong> Klik kanan gambar yang sudah diunggah di Asset Manager &gt; <em>Copy ID</em>. Jika Skybox tampak abu-abu atau putih di game, penyebab nomor satu adalah memakai Decal ID bukan Image ID.</li>
+          <li><strong>Gunakan Image ID (Bukan Decal ID):</strong> Klik kanan gambar yang sudah diunggah di Asset Manager &gt; <em>Copy ID</em>. Image ID biasanya dapat disalin dari Asset Manager, tetapi antarmuka Roblox bisa berubah sehingga cek dokumentasi Creator Hub bila skybox tampil putih atau abu-abu.</li>
           <li><strong>Pasang Script:</strong> Buat <code>Script</code> di dalam <code>ServerScriptService</code>, lalu tempel kode di atas.</li>
-          <li><strong>Jika Sisi Up/Down Terputar:</strong> Gunakan tombol rotasi di grup *Koreksi Orientasi* pada panel kiri aplikasi ini, lalu ekspor ulang.</li>
+          <li><strong>Jika Sisi Up/Down Terputar:</strong> Gunakan tombol rotasi di grup <em>Koreksi orientasi</em> pada panel kiri aplikasi ini, lalu ekspor ulang.</li>
         </ol>
         <h4>Peringatan Moderasi & Hak Cipta</h4>
         <p>Pastikan gambar mematuhi <em>Roblox Community Standards</em> (bebas dari konten ofensif atau hak cipta pihak ketiga). Roblox dapat mengenakan moderasi pada akun yang mengunggah gambar terlarang.</p>
         <h4>Unggah Cepat Lewat Skrip Lokal</h4>
-        <p>Bagi pengguna teknis dengan Roblox Open Cloud API Key, Anda dapat mengunggah 6 file ZIP secara otomatis memakai skrip pendamping di terminal: <code>node upload-skybox.mjs RobloxSkybox_1024.zip --user-id ID_ANDA</code>.</p>
+        <p>Bagi pengguna teknis dengan Roblox Open Cloud API Key, Anda dapat mengunggah 6 sisi dari ZIP secara otomatis memakai skrip pendamping di terminal: <code>node upload-skybox.mjs RobloxSkybox_1024.zip --user-id ID_ANDA</code>. Catatan: hasil unggahan lewat Open Cloud bisa berupa Decal ID, dan bila skybox putih, ambil Image ID dari Asset Manager.</p>
       </div>
     </div>
   </section>

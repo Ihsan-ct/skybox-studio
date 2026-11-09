@@ -8,9 +8,23 @@
   function loadPrefs() {
     try {
       const raw = localStorage.getItem(PREFS_KEY);
-      return raw ? JSON.parse(raw) : {};
-    } catch (_) { return {}; }
+      if (!raw) return {};
+      const parsed = JSON.parse(raw);
+      if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) return {};
+
+      const clean = {};
+      clean.exportRes = [512, 1024, 2048].includes(parsed.exportRes) ? parsed.exportRes : 1024;
+      clean.rotUp = [0, 90, 180, 270].includes(parsed.rotUp) ? parsed.rotUp : 0;
+      clean.rotDn = [0, 90, 180, 270].includes(parsed.rotDn) ? parsed.rotDn : 0;
+      clean.theme = ['auto', 'dark', 'light'].includes(parsed.theme) ? parsed.theme : 'auto';
+      clean.fadeHorizon = (typeof parsed.fadeHorizon === 'number' && Number.isFinite(parsed.fadeHorizon) && parsed.fadeHorizon >= 0 && parsed.fadeHorizon <= 45) ? parsed.fadeHorizon : 0;
+      clean.fadeColor = (typeof parsed.fadeColor === 'string' && /^#[0-9a-fA-F]{6}$/.test(parsed.fadeColor)) ? parsed.fadeColor : '#808080';
+      return clean;
+    } catch (_) {
+      return {};
+    }
   }
+
   function savePrefs() {
     try {
       const data = {
@@ -45,7 +59,6 @@
   let activeTab = 'cross';
   const PREVIEW = 256;
 
-  // A2 & A4: Buat kanvas offscreen tetap satu kali
   const crossCanvases = {};
   const canvases3D = {};
   GL.FACES.forEach(f => {
@@ -55,9 +68,26 @@
     canvases3D[f.k] = c2;
   });
 
-  function setStatus(html) { $('status').innerHTML = html || ''; }
+  function setStatus(data) {
+    const s = $('status');
+    s.textContent = '';
+    if (!data) return;
+    if (typeof data === 'string') {
+      s.textContent = data;
+    } else if (typeof data === 'object') {
+      if (data.text) {
+        s.appendChild(document.createTextNode(data.text + ' '));
+      }
+      if (data.linkUrl) {
+        const a = document.createElement('a');
+        a.href = data.linkUrl;
+        a.textContent = data.linkLabel || 'klik di sini untuk mengunduh manual';
+        if (data.download) a.setAttribute('download', data.download);
+        s.appendChild(a);
+      }
+    }
+  }
 
-  // B9: addBanner tanpa innerHTML
   function addBanner(kind, text, actions = []) {
     const el = document.createElement('div');
     el.className = 'banner ' + kind;
@@ -88,20 +118,20 @@
     el.appendChild(x);
 
     $('banners').appendChild(el);
+    return el;
   }
   function clearBanners() { $('banners').textContent = ''; }
 
-  // Theme Management (C1)
   function applyTheme(theme) {
-    state.theme = theme;
-    if (theme === 'auto') {
+    state.theme = ['auto', 'dark', 'light'].includes(theme) ? theme : 'auto';
+    if (state.theme === 'auto') {
       document.documentElement.removeAttribute('data-theme');
     } else {
-      document.documentElement.setAttribute('data-theme', theme);
+      document.documentElement.setAttribute('data-theme', state.theme);
     }
     ['auto', 'dark', 'light'].forEach(t => {
       const b = $('th-' + t);
-      if (b) b.setAttribute('aria-pressed', String(t === theme));
+      if (b) b.setAttribute('aria-pressed', String(t === state.theme));
     });
     savePrefs();
   }
@@ -141,7 +171,6 @@
     });
   }
 
-  // A4: Render 3D di 512px (atau min(exportRes, 1024)), debounced 120ms
   function schedule3DRender() {
     clearTimeout(debounce3dTimer);
     debounce3dTimer = setTimeout(() => {
@@ -165,11 +194,9 @@
     });
   }
 
-  // B1: Deteksi rasio 2:1 & B2: Pengecilan otomatis > maxTex
   function setImage(src, w, h, name, size, opts = {}) {
     if (!opts.keepBanners) clearBanners();
 
-    // B2: Cek ukuran GPU
     const max = GL.getMaxTex();
     let effectiveSrc = src;
     let ew = w, eh = h;
@@ -182,17 +209,21 @@
       addBanner('info', `Gambar diperkecil dari ${w}×${h} px ke ${ew}×${eh} px agar muat pada limit GPU.`);
     }
 
-    // B5: Tes unggah tekstur
+    const prevImage = state.image;
     try {
       GL.uploadTexture(effectiveSrc);
     } catch (e) {
+      if (prevImage && prevImage.source) {
+        try { GL.uploadTexture(prevImage.source); } catch (_) {}
+      } else {
+        state.image = null;
+      }
       addBanner('error', 'Gagal memproses tekstur GPU: ' + e.message);
       return;
     }
 
     state.image = { source: effectiveSrc, width: ew, height: eh, origWidth: w, origHeight: h, name, size };
 
-    // Format info
     let info = `${name} · ${w}×${h} px`;
     if (ew !== w || eh !== h) info += ` (GPU: ${ew}×${eh} px)`;
     $('fileinfo').textContent = info;
@@ -200,7 +231,6 @@
     $('btnZip').disabled = false;
     document.querySelectorAll('#facebtns button').forEach(b => b.disabled = false);
 
-    // B1: Banner rasio jika bukan 2:1
     if (!opts.skipRatioCheck) {
       const ratio = w / h;
       if (Math.abs(ratio - 2.0) / 2.0 > 0.05) {
@@ -240,7 +270,6 @@
     if (activeTab === '3d') render3DTextures();
   }
 
-  // B5: Error handling pada pembacaan file
   function loadFile(file) {
     if (!file) return;
     if (!/^image\//i.test(file.type)) {
@@ -260,7 +289,6 @@
     img.src = url;
   }
 
-  // B3: Paste clipboard Ctrl+V
   window.addEventListener('paste', e => {
     if (e.clipboardData && e.clipboardData.items) {
       for (let i = 0; i < e.clipboardData.items.length; i++) {
@@ -274,7 +302,6 @@
     }
   });
 
-  // Sliders UI
   const sliders = {};
   function addSlider(parent, key, label, min, max, step, unit, onChangeExtra) {
     const wrap = document.createElement('div'); wrap.className = 'slider';
@@ -299,14 +326,16 @@
   addSlider($('grpPos'), 'yaw', 'Yaw (horizontal)', 0, 360, 1, '°');
   addSlider($('grpPos'), 'pitch', 'Pitch (vertikal)', -45, 45, 1, '°');
   addSlider($('grpPos'), 'horizon', 'Horizon Level', -30, 30, 1, '°');
-  // C2: Slider Fade Horizon
   addSlider($('grpPos'), 'fadeHorizon', 'Fade Horizon', 0, 45, 1, '°', savePrefs);
 
-  // C2: Color picker Fade Horizon
   const fadeColorWrap = document.createElement('div'); fadeColorWrap.className = 'color-picker';
   const fadeColorLab = document.createElement('label'); fadeColorLab.textContent = 'Warna Fade'; fadeColorLab.htmlFor = 'fadeColor';
   const fadeColorInp = document.createElement('input'); fadeColorInp.type = 'color'; fadeColorInp.id = 'fadeColor'; fadeColorInp.value = state.fadeColor;
-  fadeColorInp.addEventListener('input', () => { state.fadeColor = fadeColorInp.value; savePrefs(); requestRender(); });
+  fadeColorInp.addEventListener('input', () => {
+    state.fadeColor = fadeColorInp.value;
+    savePrefs();
+    requestRender();
+  });
   fadeColorWrap.appendChild(fadeColorLab); fadeColorWrap.appendChild(fadeColorInp);
   $('grpPos').appendChild(fadeColorWrap);
 
@@ -315,7 +344,6 @@
   addSlider($('grpColor'), 'saturation', 'Saturation', 0, 200, 1, '%');
   addSlider($('grpColor'), 'warmth', 'Warmth (Suhu)', -100, 100, 1, '');
 
-  // Watermark handlers (D: revokeObjectURL & jangan disimpan ke localStorage)
   $('btnWmPick').addEventListener('click', () => $('wmFile').click());
   $('wmFile').addEventListener('change', e => {
     const f = e.target.files[0];
@@ -349,7 +377,10 @@
     return refresh;
   }
 
-  makeSeg($('segRes'), [512, 1024, 2048], v => v + ' px', () => state.exportRes, v => { state.exportRes = v; });
+  makeSeg($('segRes'), [512, 1024, 2048], v => v + ' px', () => state.exportRes, v => {
+    state.exportRes = v;
+    if (activeTab === '3d') schedule3DRender();
+  });
   const refUp = makeSeg($('segUp'), [0, 90, 180, 270], v => v + '°', () => state.rotUp, v => { state.rotUp = v; requestRender(); });
   const refDn = makeSeg($('segDn'), [0, 90, 180, 270], v => v + '°', () => state.rotDn, v => { state.rotDn = v; requestRender(); });
   $('flipH').addEventListener('change', e => { state.flipH = e.target.checked; requestRender(); });
@@ -405,7 +436,6 @@
     }
   });
 
-  // B4: Upload keyboard accessibility & drop
   const drop = $('drop'), fileInput = $('file');
   drop.addEventListener('click', () => fileInput.click());
   drop.addEventListener('keydown', e => {
@@ -423,7 +453,6 @@
     setImage(c, c.width, c.height, 'Gambar Uji', null, { skipRatioCheck: true });
   });
 
-  // Tabs & Aksesibilitas Panah Kiri/Kanan (C5)
   const tabNames = ['cross', '3d', 'luau'];
   function switchTab(name) {
     activeTab = name;
@@ -487,7 +516,6 @@
   });
   $('celestial').addEventListener('change', refreshLuau);
 
-  // B8: Copy script dengan try/catch & fallback
   $('btnCopy').addEventListener('click', async () => {
     try {
       await navigator.clipboard.writeText($('luau').textContent);
@@ -504,15 +532,42 @@
   });
   refreshLuau();
 
-  // B6: Registrasi callback global untuk GL context restore
+  // Penanganan WebGL Context Lost & Restored
+  let glLostBanner = null;
+  let v3dLostBanner = null;
+
   window.MainApp = {
     addBanner,
+    onGLContextLost: () => {
+      if (!glLostBanner) {
+        glLostBanner = addBanner('error', 'Konteks WebGL hilang. Memulihkan grafis...');
+      }
+    },
     onGLRestored: () => {
+      if (glLostBanner) {
+        try { glLostBanner.remove(); } catch (_) {}
+        glLostBanner = null;
+      }
+      const b = addBanner('info', 'Grafis konversi dipulihkan.');
+      setTimeout(() => { try { b.remove(); } catch (_) {} }, 4000);
       if (state.image) {
         GL.uploadTexture(state.image.source);
         requestRender();
         if (activeTab === '3d') render3DTextures();
       }
+    },
+    on3DContextLost: () => {
+      if (!v3dLostBanner) {
+        v3dLostBanner = addBanner('warn', 'Konteks grafis 3D hilang. Memulihkan...');
+      }
+    },
+    on3DContextRestored: () => {
+      if (v3dLostBanner) {
+        try { v3dLostBanner.remove(); } catch (_) {}
+        v3dLostBanner = null;
+      }
+      const b = addBanner('info', 'Grafis 3D dipulihkan.');
+      setTimeout(() => { try { b.remove(); } catch (_) {} }, 4000);
     }
   };
 
