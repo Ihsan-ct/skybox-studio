@@ -270,5 +270,56 @@ window.Flat2Pano = (function () {
     return out;
   }
 
-  return { convert };
+  // ── Mode cermin: gambar depan + refleksi ke seluruh bola langit ──
+  // Pola yang sama dipakai converter lain: tepi kiri-kanan dicerminkan agar
+  // menyambung, tepi atas/bawah dipantulkan sampai nutup di kutub. Hasilnya
+  // langit terisi tekstur penuh (bagus untuk awan/langit malam).
+  function tri(t) { const m = ((t % 2) + 2) % 2; return 1 - Math.abs(m - 1); }
+
+  function convertMirror(src, sw, sh, o) {
+    const maxW = o.maxW || 4096;
+    let W = Math.max(1024, Math.min(maxW, 2048));
+    W = Math.round(W / 2) * 2;
+    const H = W / 2;
+
+    const sc = Math.min(1, 4096 / Math.max(sw, sh));
+    const pw = Math.max(1, Math.round(sw * sc)), ph = Math.max(1, Math.round(sh * sc));
+    const px = getPixels(src, pw, ph);
+
+    const out = document.createElement('canvas');
+    out.width = W; out.height = H;
+    const og = out.getContext('2d');
+    const img = og.createImageData(W, H);
+    const od = img.data;
+
+    // Pola TC/NX: [gambar asli | versi cermin] -> tepi kiri-kanan otomatis menyambung,
+    // lalu seluruhnya direntangkan vertikal sampai nutup di kutub.
+    for (let y = 0; y < H; y++) {
+      const syf = Math.min(ph - 1, Math.max(0, (y / H) * ph));
+      const y0 = syf | 0, y1 = Math.min(ph - 1, y0 + 1), fy = syf - y0;
+      for (let x = 0; x < W; x++) {
+        // u 0..0.5 = gambar asli, u 0.5..1 = cermin horizontal
+        let u = x / W;
+        let sx;
+        if (u < 0.5) sx = u * 2 * pw;
+        else sx = (1 - u) * 2 * pw;
+        sx = Math.min(pw - 1, Math.max(0, sx));
+        const x0 = sx | 0, x1 = Math.min(pw - 1, x0 + 1), fx = sx - x0;
+        const i00 = (y0 * pw + x0) * 4, i10 = (y0 * pw + x1) * 4;
+        const i01 = (y1 * pw + x0) * 4, i11 = (y1 * pw + x1) * 4;
+        const w00 = (1 - fx) * (1 - fy), w10 = fx * (1 - fy), w01 = (1 - fx) * fy, w11 = fx * fy;
+        const o4 = (y * W + x) * 4;
+        for (let ch = 0; ch < 3; ch++) {
+          od[o4 + ch] =
+            px[i00 + ch] * w00 + px[i10 + ch] * w10 +
+            px[i01 + ch] * w01 + px[i11 + ch] * w11;
+        }
+        od[o4 + 3] = 255;
+      }
+    }
+    og.putImageData(img, 0, 0);
+    return out;
+  }
+
+  return { convert, convertMirror };
 })();

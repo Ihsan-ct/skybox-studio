@@ -302,7 +302,7 @@
 
 
   // ---------- Gambar 2D biasa -> panorama 360° otomatis ----------
-  const flat = { src: null, w: 0, h: 0, name: '', size: null, mode: '2d', kind: 'scene', fov: 100, offset: 0, edge: 18 };
+  const flat = { src: null, w: 0, h: 0, name: '', size: null, mode: '2d', kind: 'scene', fov: 100, offset: 0, edge: 18, fill: 'cermin' };
   let flatTimer = null, flatToken = 0;
 
   function flatPitch() {
@@ -328,9 +328,12 @@
     setTimeout(() => {
       if (token !== flatToken) return;
       try {
-        const c = window.Flat2Pano.convert(flat.src, flat.w, flat.h, {
+        const optPano = {
           fov: flat.fov, pitch: flatPitch(), edge: flat.edge, maxW: Math.min(4096, GL.getMaxTex())
-        });
+        };
+        const c = flat.fill === 'cermin'
+          ? window.Flat2Pano.convertMirror(flat.src, flat.w, flat.h, optPano)
+          : window.Flat2Pano.convert(flat.src, flat.w, flat.h, optPano);
         if (token !== flatToken) return;
         setImage(c, c.width, c.height, flat.name + ' [2D→360°]', flat.size, { skipRatioCheck: true });
         note.textContent = 'Gambar ditempatkan di depan kamera tanpa melar, sisanya diisi otomatis dari warna gambar dan menyambung 360°.';
@@ -405,6 +408,7 @@
     refreshMode(); refreshKind();
     $('flatCtl').hidden = flat.mode !== '2d';
   }
+  $('flatFill').addEventListener('change', e => { flat.fill = e.target.value; scheduleFlat(); });
 
   window.addEventListener('paste', e => {
     if (e.clipboardData && e.clipboardData.items) {
