@@ -10,19 +10,65 @@ Aplikasi web 100% client-side (WebGL + Three.js) tanpa framework dan tanpa build
 5. Fade Horizon smoothstep dan watermark logo sisi Dn dengan kontrol skala dan opasitas.
 6. Generator script Luau untuk ServerScriptService dengan Image ID numerik.
 7. Ekspor individual PNG dan berkas ZIP (512, 1024, 2048 px).
+8. Stitcher: gabungkan 6 sisi skybox kembali menjadi satu panorama untuk diedit ulang.
+
+## Struktur Proyek
+```
+skybox-studio/
+├── index.html
+├── css/
+│   └── app.css
+├── js/
+│   ├── gl-convert.js     # shader WebGL (equirectangular -> cube face)
+│   ├── testpattern.js    # generator panorama uji
+│   ├── viewer3d.js       # preview 3D Three.js
+│   ├── zip-export.js     # ekspor PNG / ZIP
+│   ├── luau.js           # generator script Luau
+│   ├── stitcher.js       # gabungkan 6 sisi -> panorama
+│   └── main.js           # wiring UI + state aplikasi
+├── upload-skybox.mjs     # CLI upload ke Roblox Open Cloud
+├── vercel.json
+├── package.json
+└── LICENSE
+```
+
+## Menjalankan Secara Lokal
+Karena ini static site tanpa build step, cukup serve foldernya — jangan buka `index.html` langsung lewat `file://` karena beberapa browser memblokir fetch/texture lokal karena CORS.
+
+```bash
+npx serve .
+# atau
+python3 -m http.server 8080
+```
+
+Lalu buka `http://localhost:8080` (atau port yang ditampilkan).
 
 ## Deployment Vercel & GitHub Pages
-- Vercel: Framework Preset "Other", Output Directory ".", vercel.json cleanUrls dan framework null.
-- GitHub Pages: Deploy dari branch main root.
+- Vercel: Framework Preset "Other", Output Directory ".", `vercel.json` sudah set `cleanUrls` dan `framework: null`.
+- GitHub Pages: Deploy dari branch `main`, folder root.
 
 ## Skrip upload-skybox.mjs
-Gunakan kredensial ROBLOX_API_KEY untuk unggah 6 sisi langsung ke Open Cloud Assets API.
+Gunakan kredensial `ROBLOX_API_KEY` untuk unggah 6 sisi langsung ke Open Cloud Assets API.
+
+```bash
+export ROBLOX_API_KEY="kunci_open_cloud_kamu"
+node upload-skybox.mjs RobloxSkybox_1024.zip --user-id ID_ANDA
+```
+
 Catatan: Jika skybox tampil putih di game, salin Image ID dari Asset Manager di Roblox Studio (bukan Decal ID).
 
 ## Dependensi & Hash SRI
-- Three.js r128 (cdnjs): sha512-dLxUelApnYxpLt6K2iomGngnHO83iUvZytA3YjDUCjT0HDOHKXnVYdf3hU4JjM8uEhxf9nD1/ey98U3t2vZ0qQ==
-- JSZip 3.10.1 (cdnjs): sha512-XMVd28F1oH/O71fKEHdDUCZhrMpU29vm493tVSh9SkK3QXNDEnUtLXAHIjMQlWTZ8797eiZeQmhy+z3Z555b7Q==
+- Three.js r128 (cdnjs): `sha512-dLxUelApnYxpLt6K2iomGngnHO83iUvZytA3YjDUCjT0HDOHKXnVYdf3hU4JjM8uEhxf9nD1/ey98U3t2vZ0qQ==`
+- JSZip 3.10.1 (cdnjs): `sha512-XMVd28F1oH/O71fKEHdDUCZhrMpU29vm493tVSh9SkK3QXNDEnUtLXAHIjMQlWTZ8797eiZeQmhy+z3Z555b7Q==`
+
+Kalau kamu meng-upgrade versi library ini, pastikan hash SRI di `index.html` diperbarui juga (ambil dari [cdnjs.com](https://cdnjs.com)), kalau tidak browser akan memblokir script-nya tanpa error yang terlihat oleh user.
 
 ## Batasan & Moderasi Roblox
-- Resolusi input otomatis disesuaikan dengan batas MAX_TEXTURE_SIZE GPU peramban.
+- Resolusi input otomatis disesuaikan dengan batas `MAX_TEXTURE_SIZE` GPU peramban.
 - Gambar tunduk pada Roblox Community Standards; hindari konten berhak cipta terlarang.
+
+## Kontribusi
+Issue dan PR dipersilakan. Proyek ini sengaja dibuat tanpa dependency/build step, jadi perubahan langsung ke file `js/*.js` yang relevan.
+
+## Lisensi
+MIT — lihat [LICENSE](LICENSE).
