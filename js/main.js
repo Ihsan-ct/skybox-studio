@@ -180,7 +180,7 @@
 
   function render3DTextures() {
     if (!state.image || busy || activeTab !== '3d') return;
-    const res3d = Math.max(512, Math.min(state.exportRes, 1024));
+    const res3d = 1024;
     GL.setSize(res3d);
 
     GL.FACES.forEach(f => {
@@ -551,7 +551,7 @@
       const b = addBanner('info', 'Grafis konversi dipulihkan.');
       setTimeout(() => { try { b.remove(); } catch (_) {} }, 4000);
       if (state.image) {
-        GL.uploadTexture(state.image.source);
+        try { GL.uploadTexture(state.image.source); } catch (e) { addBanner('error', 'Gagal memuat ulang tekstur: ' + e.message); return; }
         requestRender();
         if (activeTab === '3d') render3DTextures();
       }

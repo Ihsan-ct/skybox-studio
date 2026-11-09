@@ -7,7 +7,7 @@ window.ZipExport = (function () {
     const a = document.createElement('a');
     a.href = url; a.download = name;
     document.body.appendChild(a); a.click(); a.remove();
-    return url;
+    setTimeout(() => URL.revokeObjectURL(url), 60000); return url;
   }
 
   async function renderFaceCanvas(face, size, state) {
