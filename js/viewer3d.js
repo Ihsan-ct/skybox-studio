@@ -1,7 +1,6 @@
 "use strict";
 window.Viewer3D = (function () {
-  let scene, camera, renderer;
-  const faceMeshes = {};
+  let scene, camera, renderer, skyboxMesh;
   const faceTextures = {};
   const faceCanvases = {};
   let baseplateGroup, characterGroup, seamLinesGroup;
@@ -10,7 +9,6 @@ window.Viewer3D = (function () {
   let renderRequested = false;
   let containerEl = null;
 
-  // Kontrol kamera kustom (A3)
   let camYaw = 0;
   let camPitch = 0;
   let velYaw = 0;
@@ -21,8 +19,9 @@ window.Viewer3D = (function () {
   let lastX = 0, lastY = 0;
   let fovListener = null;
 
-  const MAX_PITCH = 89 * Math.PI / 180;
+  const MAX_PITCH = 85 * Math.PI / 180;
   const D = 200;
+  const D2 = D / 2;
 
   function updateCameraOrientation() {
     const cp = Math.cos(camPitch);
@@ -89,25 +88,32 @@ window.Viewer3D = (function () {
     container.innerHTML = '';
     container.appendChild(renderer.domElement);
 
-    // Plane sedikit dioverlap 0.2% agar tidak ada retakan sub-pixel rasterisasi
-    const planeGeo = new THREE.PlaneGeometry(D * 1.002, D * 1.002);
-
-    // Konfigurasi sudut pandang PRD 5.1 & A1: Up [PI/2, 0, 0], Dn [-PI/2, 0, 0]
-    const configs = [
-      { k: 'Ft', pos: [0, 0, -D / 2], rot: [0, 0, 0] },
-      { k: 'Bk', pos: [0, 0, D / 2], rot: [0, Math.PI, 0] },
-      { k: 'Lf', pos: [-D / 2, 0, 0], rot: [0, Math.PI / 2, 0] },
-      { k: 'Rt', pos: [D / 2, 0, 0], rot: [0, -Math.PI / 2, 0] },
-      { k: 'Up', pos: [0, D / 2, 0], rot: [Math.PI / 2, 0, 0] },
-      { k: 'Dn', pos: [0, -D / 2, 0], rot: [-Math.PI / 2, 0, 0] }
+    // KUBUS TUNGGAL TERKONEKSI (Semua sudut rusuk presisi 100% tanpa celah)
+    const facesData = [
+      { k: 'Ft', bl: [-D2, -D2, -D2], br: [ D2, -D2, -D2], tr: [ D2,  D2, -D2], tl: [-D2,  D2, -D2] },
+      { k: 'Bk', bl: [ D2, -D2,  D2], br: [-D2, -D2,  D2], tr: [-D2,  D2,  D2], tl: [ D2,  D2,  D2] },
+      { k: 'Lf', bl: [-D2, -D2,  D2], br: [-D2, -D2, -D2], tr: [-D2,  D2, -D2], tl: [-D2,  D2,  D2] },
+      { k: 'Rt', bl: [ D2, -D2, -D2], br: [ D2, -D2,  D2], tr: [ D2,  D2,  D2], tl: [ D2,  D2, -D2] },
+      { k: 'Up', bl: [-D2,  D2, -D2], br: [ D2,  D2, -D2], tr: [ D2,  D2,  D2], tl: [-D2,  D2,  D2] },
+      { k: 'Dn', bl: [-D2, -D2,  D2], br: [ D2, -D2,  D2], tr: [ D2, -D2, -D2], tl: [-D2, -D2, -D2] }
     ];
 
-    configs.forEach(c => {
+    const positions = [];
+    const uvs = [];
+    const indices = [];
+    const materials = [];
+
+    facesData.forEach((f, idx) => {
+      const vOffset = idx * 4;
+      positions.push(...f.bl, ...f.br, ...f.tr, ...f.tl);
+      uvs.push(0, 0,  1, 0,  1, 1,  0, 1);
+      indices.push(vOffset, vOffset + 1, vOffset + 2, vOffset, vOffset + 2, vOffset + 3);
+
       const c2d = document.createElement('canvas');
       c2d.width = 512; c2d.height = 512;
       const ctx = c2d.getContext('2d');
       ctx.fillStyle = '#1b1e27'; ctx.fillRect(0, 0, 512, 512);
-      faceCanvases[c.k] = c2d;
+      faceCanvases[f.k] = c2d;
 
       const tex = new THREE.CanvasTexture(c2d);
       tex.minFilter = THREE.LinearFilter;
@@ -115,17 +121,29 @@ window.Viewer3D = (function () {
       tex.generateMipmaps = false;
       tex.wrapS = THREE.ClampToEdgeWrapping;
       tex.wrapT = THREE.ClampToEdgeWrapping;
-      faceTextures[c.k] = tex;
+      faceTextures[f.k] = tex;
 
-      const mat = new THREE.MeshBasicMaterial({ map: tex, side: THREE.FrontSide });
-      const mesh = new THREE.Mesh(planeGeo, mat);
-      mesh.position.set(...c.pos);
-      mesh.rotation.set(...c.rot);
-      scene.add(mesh);
-      faceMeshes[c.k] = mesh;
+      const mat = new THREE.MeshBasicMaterial({
+        map: tex,
+        side: THREE.FrontSide,
+        depthWrite: false
+      });
+      materials.push(mat);
     });
 
-    // Wireframe Seam yang benar (C3: EdgesGeometry kubus 12 garis tepi)
+    const skyGeo = new THREE.BufferGeometry();
+    skyGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(positions), 3));
+    skyGeo.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(uvs), 2));
+    skyGeo.setIndex(new THREE.BufferAttribute(new Uint16Array(indices), 1));
+
+    facesData.forEach((f, idx) => {
+      skyGeo.addGroup(idx * 6, 6, idx);
+    });
+
+    skyboxMesh = new THREE.Mesh(skyGeo, materials);
+    scene.add(skyboxMesh);
+
+    // Wireframe Seam
     const seamBox = new THREE.BoxGeometry(D, D, D);
     const seamEdges = new THREE.EdgesGeometry(seamBox);
     const seamLineMat = new THREE.LineBasicMaterial({ color: 0x39ff14, linewidth: 2 });
@@ -164,7 +182,6 @@ window.Viewer3D = (function () {
     dirLight.position.set(5, 15, 10);
     scene.add(ambLight, dirLight);
 
-    // Kontrol pointer drag & pinch kustom (A3)
     container.addEventListener('pointerdown', e => {
       container.setPointerCapture(e.pointerId);
       activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
@@ -230,22 +247,14 @@ window.Viewer3D = (function () {
       setFov(camera.fov + delta);
     }, { passive: false });
 
-    // ResizeObserver untuk responsif tanpa hardcoded id (A5)
-    const ro = new ResizeObserver(() => {
-      onResize();
-    });
+    const ro = new ResizeObserver(() => { onResize(); });
     ro.observe(container);
 
-    // Tangani visibility tab browser (A5)
     document.addEventListener('visibilitychange', () => {
-      if (document.hidden) {
-        isInertiaRunning = false;
-      } else if (isVisible) {
-        requestRender();
-      }
+      if (document.hidden) isInertiaRunning = false;
+      else if (isVisible) requestRender();
     });
 
-    // Tangani WebGL context lost & restored pada canvas three.js (A5)
     renderer.domElement.addEventListener('webglcontextlost', e => {
       e.preventDefault();
       if (window.MainApp && window.MainApp.addBanner) {
@@ -277,7 +286,6 @@ window.Viewer3D = (function () {
     requestRender();
   }
 
-  // A2: Perbarui isi kanvas yang sudah ada tanpa alokasi CanvasTexture baru
   function updateFaceTexture(faceKey, sourceCanvas) {
     const c2d = faceCanvases[faceKey];
     const tex = faceTextures[faceKey];
@@ -313,12 +321,8 @@ window.Viewer3D = (function () {
 
   function setVisible(val) {
     isVisible = val;
-    if (val) {
-      onResize();
-      requestRender();
-    } else {
-      isInertiaRunning = false;
-    }
+    if (val) { onResize(); requestRender(); }
+    else { isInertiaRunning = false; }
   }
 
   return {
