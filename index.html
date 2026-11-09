@@ -102,14 +102,14 @@
   <section class="card" aria-label="Akun Roblox">
     <h2>Akun Roblox</h2>
     <div id="accList"></div>
-    <p class="note">Disimpan hanya di browser ini, tidak dikirim ke server. Dengan kata sandi, API key dienkripsi (AES-GCM); tanpa kata sandi tersimpan sebagai teks biasa. API Key dibuat di <a href="https://create.roblox.com/dashboard/credentials" target="_blank" rel="noopener">Creator Dashboard</a> dengan permission <strong>Assets</strong> (Read + Write), tanpa pembatasan IP.</p>
+    <p class="note">Disimpan hanya di browser ini, tidak dikirim ke server. API key dienkripsi (AES-GCM) dengan kunci perangkat sehingga terisi otomatis saat upload; isi kata sandi kalau mau perlindungan ekstra (kata sandi diminta tiap dipakai). API Key dibuat di <a href="https://create.roblox.com/dashboard/credentials" target="_blank" rel="noopener">Creator Dashboard</a> dengan permission <strong>Assets</strong> (Read + Write), tanpa pembatasan IP.</p>
     <div class="form">
       <input id="fName" type="text" placeholder="Nama akun (mis. Akun Utama)">
       <select id="fType"><option value="user">Milik User</option><option value="group">Milik Group</option></select>
       <input id="fId" type="text" inputmode="numeric" placeholder="User ID / Group ID">
       <input id="fPrefix" type="text" placeholder="Nama awalan aset (default: Skybox)">
       <input id="fKey" type="password" placeholder="Open Cloud API Key" autocomplete="off">
-      <input id="fPass" type="password" placeholder="Kata sandi brankas (disarankan)" autocomplete="off">
+      <input id="fPass" type="password" placeholder="Kata sandi (opsional)" autocomplete="off">
     </div>
     <div class="row"><button id="fSave" class="primary" type="button">Simpan akun</button></div>
     <div id="fMsg" class="note" role="status"></div>

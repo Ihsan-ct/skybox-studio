@@ -339,6 +339,7 @@
   function handleNewImage(src, w, h, name, size) {
     clearBanners();
     flat.src = src; flat.w = w; flat.h = h; flat.name = name; flat.size = size;
+    if (window.RobloxUpload && window.RobloxUpload.suggestPrefix) window.RobloxUpload.suggestPrefix(name);
     const ratio = w / h;
     flat.mode = Math.abs(ratio - 2.0) / 2.0 <= 0.05 ? 'pano' : '2d';
     syncFlatUI();
@@ -601,7 +602,7 @@
     setImage(c, c.width, c.height, 'Gambar Uji', null, { skipRatioCheck: true });
   });
 
-  const tabNames = ['cross', '3d', 'luau', 'rbx', 'stitch'];
+  const tabNames = ['cross', '3d', 'rbx', 'stitch'];
   window.Stitcher.build($('panel-stitch'));
   if (window.RobloxUpload) window.RobloxUpload.build($('rbxUploadRoot'), state, refreshLuau);
   function switchTab(name) {
@@ -655,18 +656,39 @@
     $('out_fov').textContent = Math.round(fov);
   });
 
+  // Script muncul otomatis di tab Upload Roblox begitu ke-6 Image ID terisi (dari upload atau input manual).
+  let luauShown = false;
   function refreshLuau() {
     $('luau').textContent = window.LuauGen.buildLuau(state.ids, $('celestial').checked);
+    const all = GL.FACES.every(f => /^\d+$/.test(String(state.ids[f.k] || '').trim()));
+    $('rbxResult').hidden = !all;
+    $('decalWarn').hidden = !(all && state.uploadType === 'Decal');
+    if (all && !luauShown) {
+      luauShown = true;
+      if (activeTab === 'rbx') $('rbxResult').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+    if (!all) luauShown = false;
   }
   GL.FACES.forEach(f => {
     const row = document.createElement('div'); row.className = 'field';
     const lab = document.createElement('label'); lab.htmlFor = 'id_' + f.k; lab.textContent = f.name;
     const inp = document.createElement('input'); inp.type = 'text'; inp.id = 'id_' + f.k;
     inp.inputMode = 'numeric'; inp.placeholder = 'Image ID ' + f.name;
-    inp.addEventListener('input', () => { state.ids[f.k] = inp.value; refreshLuau(); });
+    inp.addEventListener('input', () => { state.ids[f.k] = inp.value; state.uploadType = null; refreshLuau(); });
     row.appendChild(lab); row.appendChild(inp); $('idfields').appendChild(row);
   });
   $('celestial').addEventListener('change', refreshLuau);
+
+  $('btnView3d').addEventListener('click', () => { switchTab('3d'); window.scrollTo({ top: 0, behavior: 'smooth' }); });
+
+  $('btnRbxmx').addEventListener('click', () => {
+    const xml = window.LuauGen.buildRbxmx(state.ids, $('celestial').checked);
+    const a = document.createElement('a');
+    const url = URL.createObjectURL(new Blob([xml], { type: 'application/xml' }));
+    a.href = url; a.download = 'Sky.rbxmx';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+  });
 
   $('btnCopy').addEventListener('click', async () => {
     try {

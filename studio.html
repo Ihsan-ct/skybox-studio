@@ -47,7 +47,6 @@
     <div class="tabs" role="tablist" aria-label="Tampilan preview">
       <button role="tab" id="tab-cross" aria-selected="true" aria-controls="panel-cross" tabindex="0" type="button">Preview Cross</button>
       <button role="tab" id="tab-3d" aria-selected="false" aria-controls="panel-3d" tabindex="-1" type="button">Preview 3D</button>
-      <button role="tab" id="tab-luau" aria-selected="false" aria-controls="panel-luau" tabindex="-1" type="button">Script Luau</button>
       <button role="tab" id="tab-rbx" aria-selected="false" aria-controls="panel-rbx" tabindex="-1" type="button">Upload Roblox</button>
       <button role="tab" id="tab-stitch" aria-selected="false" aria-controls="panel-stitch" tabindex="-1" type="button">Stitcher</button>
       <span class="spacer"></span>
@@ -78,32 +77,43 @@
 
     <div id="panel-stitch" role="tabpanel" aria-labelledby="tab-stitch" hidden></div>
 
-    <div id="panel-luau" role="tabpanel" aria-labelledby="tab-luau" hidden>
-      <p style="margin-top:0">Isi Image ID tiap sisi (angka saja) setelah kamu mengunggahnya ke Roblox.</p>
-      <div id="idfields"></div>
-      <label class="check"><input type="checkbox" id="celestial"> Tampilkan matahari/bulan (CelestialBodiesShown)</label>
-      <pre id="luau" aria-label="Script Luau"></pre>
-      <button id="btnCopy" type="button">Salin script</button>
-      <span id="copystatus" role="status" style="margin-left:8px;font-size:13px;color:var(--muted)"></span>
-
-      <div class="guide">
-        <h4>Panduan Memasang Skybox ke Roblox</h4>
-        <ol>
-          <li><strong>Unggah Gambar:</strong> Di Roblox Studio, buka <em>View &gt; Asset Manager &gt; Images</em> lalu unggah keenam file PNG hasil unduhan.</li>
-          <li><strong>Gunakan Image ID (Bukan Decal ID):</strong> Klik kanan gambar yang sudah diunggah di Asset Manager &gt; <em>Copy ID</em>. Image ID biasanya dapat disalin dari Asset Manager, tetapi antarmuka Roblox bisa berubah sehingga cek dokumentasi Creator Hub bila skybox tampil putih atau abu-abu.</li>
-          <li><strong>Pasang Script:</strong> Buat <code>Script</code> di dalam <code>ServerScriptService</code>, lalu tempel kode di atas.</li>
-          <li><strong>Jika Sisi Up/Down Terputar:</strong> Gunakan tombol rotasi di grup <em>Koreksi orientasi</em> pada panel kiri aplikasi ini, lalu ekspor ulang.</li>
-        </ol>
-        <h4>Peringatan Moderasi & Hak Cipta</h4>
-        <p>Pastikan gambar mematuhi <em>Roblox Community Standards</em> (bebas dari konten ofensif atau hak cipta pihak ketiga). Roblox dapat mengenakan moderasi pada akun yang mengunggah gambar terlarang.</p>
-        <h4>Unggah Cepat Lewat Skrip Lokal</h4>
-        <p>Bagi pengguna teknis dengan Roblox Open Cloud API Key, Anda dapat mengunggah 6 sisi dari ZIP secara otomatis memakai skrip pendamping di terminal: <code>node upload-skybox.mjs RobloxSkybox_1024.zip --user-id ID_ANDA</code>. Catatan: hasil unggahan lewat Open Cloud bisa berupa Decal ID, dan bila skybox putih, ambil Image ID dari Asset Manager.</p>
-      </div>
-
-    </div>
-
     <div id="panel-rbx" role="tabpanel" aria-labelledby="tab-rbx" hidden>
       <div id="rbxUploadRoot"></div>
+
+      <div id="rbxResult" hidden>
+        <div id="decalWarn" class="card" hidden style="border:1px solid #d9a400;background:rgba(217,164,0,.12);margin:12px 0">
+          <strong>⚠️ Aset terunggah sebagai Decal, bukan Image.</strong>
+          <p style="margin:6px 0 0">Skybox bisa tampil putih karena ID Decal tidak bisa dipakai di Sky. Cara memperbaiki: di Roblox Studio buka <em>View &gt; Asset Manager</em>, cari gambar (Skybox_Ft dst.), klik kanan &gt; <em>Copy ID</em>, lalu isi ulang tiap sisi di bagian "Sudah punya Image ID? Isi manual" di bawah. Script dan file .rbxmx akan ikut diperbarui.</p>
+        </div>
+        <h3 style="margin:14px 0 6px">Pasang ke Roblox</h3>
+        <p style="margin-top:0">Ke-6 sisi sudah terunggah. Pilih cara termudah: unduh file Sky lalu impor, atau salin script.</p>
+        <div class="row" style="gap:8px;margin-bottom:8px">
+          <button id="btnRbxmx" type="button" class="primary">Unduh file Sky (.rbxmx)</button>
+          <button id="btnView3d" type="button">Lihat di Preview 3D</button>
+          <span style="font-size:13px;color:var(--muted);align-self:center">Studio: klik kanan <code>Lighting</code> &gt; <em>Insert From File</em>, pilih file ini.</span>
+        </div>
+        <label class="check"><input type="checkbox" id="celestial"> Tampilkan matahari/bulan (CelestialBodiesShown)</label>
+        <pre id="luau" aria-label="Script Luau"></pre>
+        <button id="btnCopy" type="button">Salin script</button>
+        <span id="copystatus" role="status" style="margin-left:8px;font-size:13px;color:var(--muted)"></span>
+
+        <div class="guide">
+          <h4>Panduan Memasang Skybox ke Roblox</h4>
+          <ol>
+            <li><strong>Gunakan Image ID (Bukan Decal ID):</strong> Klik kanan gambar yang sudah diunggah di Asset Manager &gt; <em>Copy ID</em>. Image ID biasanya dapat disalin dari Asset Manager, tetapi antarmuka Roblox bisa berubah sehingga cek dokumentasi Creator Hub bila skybox tampil putih atau abu-abu.</li>
+            <li><strong>Pasang Script:</strong> Buat <code>Script</code> di dalam <code>ServerScriptService</code>, lalu tempel kode di atas.</li>
+            <li><strong>Jika Sisi Up/Down Terputar:</strong> Gunakan tombol rotasi di grup <em>Koreksi orientasi</em> pada panel kiri aplikasi ini, lalu ekspor ulang.</li>
+          </ol>
+          <h4>Peringatan Moderasi & Hak Cipta</h4>
+          <p>Pastikan gambar mematuhi <em>Roblox Community Standards</em> (bebas dari konten ofensif atau hak cipta pihak ketiga). Roblox dapat mengenakan moderasi pada akun yang mengunggah gambar terlarang.</p>
+        </div>
+      </div>
+
+      <details class="group" style="margin-top:12px">
+        <summary>Sudah punya Image ID? Isi manual</summary>
+        <p style="margin-top:6px">Isi Image ID tiap sisi (angka saja) kalau kamu mengunggah sendiri lewat Roblox Studio. Script muncul otomatis begitu keenamnya terisi.</p>
+        <div id="idfields"></div>
+      </details>
     </div>
   </section>
 

@@ -24,7 +24,7 @@
   <p>Login hanya diperlukan untuk upload ke Roblox. Kami meminta akses minimal (Google: <code>openid profile</code>; Discord: <code>identify</code>) dan hanya menerima ID akun, nama tampilan, dan foto profil. Kami tidak meminta atau menyimpan alamat email, kata sandi, ataupun token akses Google/Discord. Data ini disimpan di cookie sesi bertanda tangan (HttpOnly, 7 hari) dan dihapus saat Anda klik Keluar.</p>
 
   <h2>API key Roblox</h2>
-  <p>API key hanya diteruskan sekali per permintaan ke Roblox melalui server proxy kami. Key tidak disimpan dan tidak dicatat di server atau database. Di browser Anda, key disimpan lokal (terenkripsi AES-GCM jika Anda mengisi kata sandi brankas).</p>
+  <p>API key hanya diteruskan sekali per permintaan ke Roblox melalui server proxy kami. Key tidak disimpan dan tidak dicatat di server atau database. Di browser Anda, key disimpan lokal dan terenkripsi AES-GCM (kunci perangkat, atau kata sandi bila Anda mengisinya) supaya tidak perlu dimasukkan ulang.</p>
 
   <h2>Sinkronisasi (opsional)</h2>
   <p>Bila diaktifkan, kami menyimpan di database (Upstash Redis) ID akun login, nama tampilan, serta metadata profil Roblox (nama profil, User/Group ID, awalan nama aset) dan riwayat 20 upload terakhir (waktu, nama, ID aset). Tanpa API key.</p>

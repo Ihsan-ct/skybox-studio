@@ -8,7 +8,7 @@ Aplikasi web 100% client-side (WebGL + Three.js) tanpa framework dan tanpa build
 3. Preview 3D Three.js dengan Roblox Baseplate, dummy character 3D, FOV zoom (40-100), dan drag camera berinersia.
 4. Wireframe Seam mode (EdgesGeometry) tanpa glitch garis diagonal.
 5. Fade Horizon smoothstep dan watermark logo sisi Dn dengan kontrol skala dan opasitas.
-6. Generator script Luau untuk ServerScriptService dengan Image ID numerik.
+6. Generator script Luau untuk ServerScriptService dengan Image ID numerik (muncul otomatis di tab Upload Roblox setelah upload selesai).
 7. Ekspor individual PNG dan berkas ZIP (512, 1024, 2048 px).
 8. Stitcher: gabungkan 6 sisi skybox kembali menjadi satu panorama untuk diedit ulang.
 
@@ -24,7 +24,7 @@ skybox-studio/
 │   ├── testpattern.js    # generator panorama uji
 │   ├── viewer3d.js       # preview 3D Three.js
 │   ├── zip-export.js     # ekspor PNG / ZIP
-│   ├── luau.js           # generator script Luau
+│   ├── luau.js           # generator script Luau + file Sky .rbxmx
 │   ├── auth.js           # status login + tombol masuk
 │   ├── vault.js          # brankas akun (localStorage, enkripsi opsional) + riwayat upload
 │   ├── dashboard.js      # logika halaman Dashboard
@@ -66,11 +66,11 @@ Lalu buka `http://localhost:8080` (atau port yang ditampilkan).
 **Langkah singkat**
 1. Buat API Key di [Creator Dashboard > Credentials](https://create.roblox.com/dashboard/credentials) dengan permission **Assets** (Read + Write); biarkan pembatasan IP mati karena IP Vercel berubah-ubah.
 2. Buka situs yang di-deploy di Vercel, unggah panorama, lalu buka tab **Upload Roblox**.
-3. Isi API Key dan User ID (atau Group ID), klik **Upload ke Roblox**. Tiap sisi dirender, diunggah, dan Image ID langsung terisi di form script Luau begitu selesai.
+3. Isi API Key dan User ID (atau Group ID), klik **Upload ke Roblox**. Tiap sisi dirender, diunggah, dan Image ID langsung terisi. Begitu ke-6 sisi selesai, **script Luau muncul otomatis di bawah panel upload** (tidak ada tab terpisah), tinggal klik **Salin script**. Kalau ada sisi yang gagal, tombol **Coba lagi** muncul di sisi itu saja (sisi lain tidak diunggah ulang); tombol **Lihat di Preview 3D** membuka pratinjau hasilnya. Atau klik **Unduh file Sky (.rbxmx)**, lalu di Roblox Studio klik kanan `Lighting` > *Insert From File* (tanpa script). Nama aset memakai nama file gambar sebagai awalan (mis. `langit-malam_Ft`), bisa diubah. Kalau aset terunggah sebagai Decal, muncul kotak peringatan beserta cara mengambil Image ID yang benar. Kalau kamu mengunggah sendiri lewat Roblox Studio, isi Image ID di bagian "Sudah punya Image ID? Isi manual".
 
 Ini jalan lewat 2 Serverless Function (`api/roblox-create.js`, `api/roblox-poll.js`) karena Roblox Open Cloud tidak mengizinkan request langsung dari browser (CORS). Browser memanggil `/api/*` (same-origin), lalu function meneruskannya server-to-server ke Roblox. API key hanya diteruskan per request, tidak disimpan. Request lintas-situs ditolak (`api/_guard.js`).
 
-**Akun tersimpan.** Kelola akun di halaman **Dashboard** (`index.html`), atau simpan langsung dari tab Upload Roblox, supaya tidak mengetik ulang. Data disimpan di `localStorage` browser itu saja (tidak dikirim ke server). Kalau kamu mengisi kata sandi brankas, API key dienkripsi (AES-GCM, kunci dari PBKDF2) dan kata sandi diminta lagi saat menekan **Pakai**; tanpa kata sandi, key tersimpan sebagai teks biasa. Jangan simpan key di komputer bersama.
+**Akun tersimpan.** Kelola akun di halaman **Dashboard** (`index.html`), atau simpan langsung dari tab Upload Roblox, supaya tidak mengetik ulang. Data disimpan di `localStorage` browser itu saja (tidak dikirim ke server). Setelah upload pertama berhasil, API key **diingat otomatis** (kotak "Ingat API key" aktif secara default) dan terisi sendiri di kunjungan berikutnya, jadi tidak perlu dimasukkan lagi. Key dienkripsi AES-GCM dengan kunci perangkat yang tidak bisa diekspor (disimpan di IndexedDB). Kalau kamu mengisi kata sandi, key memakai kunci dari kata sandi (PBKDF2) dan kata sandi diminta lagi saat menekan **Pakai**. Teks biasa hanya dipakai kalau browser tidak mendukung enkripsi dan kamu menyetujuinya. Jangan simpan key di komputer bersama.
 
 **Batas 4,5 MB.** Vercel membatasi body request function sampai 4,5 MB. Kalau PNG satu sisi lebih besar dari ±4,2 MB, aplikasi otomatis memperkecil resolusinya bertahap (minimum 512 px) dan mencatatnya di log. Kalau tetap tidak muat, pakai `upload-skybox.mjs`.
 

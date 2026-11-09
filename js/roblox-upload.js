@@ -4,7 +4,8 @@ window.RobloxUpload = (function () {
   const mk = (tag, props, parent) => { const e = document.createElement(tag); Object.assign(e, props || {}); if (parent) parent.appendChild(e); return e; };
   const sleep = ms => new Promise(r => setTimeout(r, ms));
 
-  let apiKeyInp, ownerTypeSel, ownerIdInp, namePrefixInp, typeSel, btnUpload, logEl, vaultSel, vaultNameInp, vaultPassInp;
+  let prefixAuto = '', pendingSuggest = '', running = false;
+  let apiKeyInp, ownerTypeSel, ownerIdInp, namePrefixInp, typeSel, btnUpload, logEl, vaultSel, vaultNameInp, vaultPassInp, rememberChk, autoSave;
   const rows = {};
 
   function log(msg) {
@@ -13,6 +14,12 @@ window.RobloxUpload = (function () {
     logEl.appendChild(p);
     logEl.scrollTop = logEl.scrollHeight;
   }
+
+  function setBusy(b) {
+    btnUpload.disabled = b;
+    FACES.forEach(f => { if (rows[f.k] && rows[f.k].retry) rows[f.k].retry.disabled = b; });
+  }
+  function setRetry(k, show) { if (rows[k] && rows[k].retry) rows[k].retry.hidden = !show; }
 
   function setRowStatus(k, text, ok) {
     const r = rows[k];
@@ -25,8 +32,17 @@ window.RobloxUpload = (function () {
   let doneType = null, lastSig = '';
 
   function resetProgress() {
-    FACES.forEach(f => { delete done[f.k]; delete pending[f.k]; setRowStatus(f.k, 'Belum diunggah', false); });
+    FACES.forEach(f => { delete done[f.k]; delete pending[f.k]; setRowStatus(f.k, 'Belum diunggah', false); setRetry(f.k, false); });
     doneType = null; lastSig = '';
+  }
+
+  // Awalan nama aset otomatis dari nama file gambar (hanya kalau pengguna belum mengetik sendiri).
+  function suggestPrefix(fileName) {
+    const v = String(fileName || '').replace(/\.[^.]+$/, '').replace(/\s*\[[^\]]*\]\s*$/, '')
+      .replace(/\s+/g, '-').replace(/[^\w\-]/g, '').replace(/^-+|-+$/g, '').slice(0, 30);
+    if (!v) return;
+    if (!namePrefixInp) { pendingSuggest = v; return; }
+    if (namePrefixInp.value.trim() === '' || namePrefixInp.value === prefixAuto) { namePrefixInp.value = v; prefixAuto = v; }
   }
 
   async function renderFacePng(face, size, state) {
@@ -81,7 +97,10 @@ window.RobloxUpload = (function () {
     throw new Error('Waktu tunggu habis (mungkin masih dalam moderasi). Tekan Upload lagi untuk melanjutkan mengecek ' + path + '.');
   }
 
-  async function run(state, onIdsUpdated) {
+  const FATAL = [401, 403, 429];
+
+  // only: kunci satu sisi (mis. 'Bk') untuk mencoba ulang sisi itu saja.
+  async function run(state, onIdsUpdated, only) {
     const apiKey = apiKeyInp.value.trim();
     const ownerType = ownerTypeSel.value;
     const ownerId = ownerIdInp.value.trim();
@@ -90,62 +109,88 @@ window.RobloxUpload = (function () {
     if (!apiKey) { log('API Key wajib diisi.'); return; }
     if (!/^\d+$/.test(ownerId)) { log('User ID / Group ID harus berupa angka.'); return; }
     if (!state.image) { log('Belum ada gambar skybox untuk diunggah. Unggah panorama dulu di tab Preview Cross.'); return; }
+    if (running) return;
 
     const sig = ownerType + ':' + ownerId + ':' + base;
     if (sig !== lastSig) { resetProgress(); lastSig = sig; }
     let type = doneType || (typeSel.value === 'auto' ? 'Image' : typeSel.value);
 
-    btnUpload.disabled = true;
-    FACES.forEach(f => { if (!done[f.k]) setRowStatus(f.k, 'Menunggu…', false); });
-    log('Mulai mengunggah ' + base + '_* (' + type + ', ' + state.exportRes + 'px)…');
+    let saved = false;
+    if (!only && !Object.keys(done).length && !Object.keys(pending).length) {   // upload baru: sembunyikan script lama
+      state.uploadType = null;
+      FACES.forEach(f => { state.ids[f.k] = ''; const i = document.getElementById('id_' + f.k); if (i) i.value = ''; });
+      if (onIdsUpdated) onIdsUpdated();
+    }
+    running = true; setBusy(true);
+    const targets = only ? FACES.filter(f => f.k === only) : FACES;
+    targets.forEach(f => { if (!done[f.k]) setRowStatus(f.k, 'Menunggu…', false); });
+    log((only ? 'Mencoba ulang Skybox' + only : 'Mulai mengunggah ' + base + '_*') + ' (' + type + ', ' + state.exportRes + 'px)…');
 
+    const failed = {};
     try {
-      for (const f of FACES) {
+      for (const f of targets) {
         if (done[f.k]) { log('Skybox' + f.k + ' sudah terunggah (' + done[f.k] + '), dilewati.'); continue; }
-        let path = pending[f.k];
-        if (!path) {
-          setRowStatus(f.k, 'Merender…', false);
-          const { blob, size } = await fitFacePng(f, state.exportRes, state);
-          if (size !== state.exportRes) log('Skybox' + f.k + ' diperkecil ke ' + size + 'px agar muat batas 4,5 MB.');
-          const name = base + '_' + f.k;
-          setRowStatus(f.k, 'Mengunggah…', false);
-          try {
-            path = await createAsset(apiKey, type, name, ownerType, ownerId, blob);
-          } catch (e) {
-            if (e.status === 400 && typeSel.value === 'auto' && type === 'Image' && !doneType) {
-              type = 'Decal';
-              log('Permintaan Image ditolak (400); mencoba Decal…');
+        try {
+          let path = pending[f.k];
+          if (!path) {
+            setRowStatus(f.k, 'Merender…', false);
+            const { blob, size } = await fitFacePng(f, state.exportRes, state);
+            if (size !== state.exportRes) log('Skybox' + f.k + ' diperkecil ke ' + size + 'px agar muat batas 4,5 MB.');
+            const name = base + '_' + f.k;
+            setRowStatus(f.k, 'Mengunggah…', false);
+            try {
               path = await createAsset(apiKey, type, name, ownerType, ownerId, blob);
-            } else throw e;
+            } catch (e) {
+              if (e.status === 400 && typeSel.value === 'auto' && type === 'Image' && !doneType) {
+                type = 'Decal';
+                log('Permintaan Image ditolak (400); mencoba Decal…');
+                path = await createAsset(apiKey, type, name, ownerType, ownerId, blob);
+              } else throw e;
+            }
+            doneType = type;
+            pending[f.k] = path;
           }
-          doneType = type;
-          pending[f.k] = path;
+          setRowStatus(f.k, 'Diproses Roblox…', false);
+          let assetId;
+          try { assetId = await pollOperation(apiKey, path); }
+          catch (e) { if (/Ditolak Roblox/.test(e.message)) delete pending[f.k]; throw e; }   // ditolak: render ulang saat dicoba lagi
+          done[f.k] = assetId; delete pending[f.k];
+          if (!saved && autoSave) { saved = true; try { await autoSave(); } catch (e) {} }
+          setRowStatus(f.k, 'ID ' + assetId, true);
+          setRetry(f.k, false);
+          log('Skybox' + f.k + ' -> ' + assetId);
+          state.ids[f.k] = assetId;
+          const inp = document.getElementById('id_' + f.k);
+          if (inp) inp.value = assetId;
+          if (onIdsUpdated) onIdsUpdated();
+        } catch (e) {
+          failed[f.k] = e;
+          setRowStatus(f.k, 'Gagal', false);
+          setRetry(f.k, true);
+          log('Skybox' + f.k + ' gagal: ' + e.message);
+          if (FATAL.includes(e.status)) { log('Dihentikan: masalah API key / izin / kuota, bukan hanya satu sisi.'); break; }
         }
-        setRowStatus(f.k, 'Diproses Roblox…', false);
-        const assetId = await pollOperation(apiKey, path);
-        done[f.k] = assetId; delete pending[f.k];
-        setRowStatus(f.k, 'ID ' + assetId, true);
-        log('Skybox' + f.k + ' -> ' + assetId);
-        state.ids[f.k] = assetId;
-        const inp = document.getElementById('id_' + f.k);
-        if (inp) inp.value = assetId;
-        if (onIdsUpdated) onIdsUpdated();
       }
 
-      log('Selesai! Semua 6 sisi terunggah sebagai ' + type + '.');
-      if (type === 'Decal') {
-        log('Catatan: aset berupa Decal. Kalau skybox tampil putih di game, ambil Image ID dari Asset Manager di Studio.');
-      }
-      window.Vault.addHistory({ t: Date.now(), base, type, ownerId, ids: Object.assign({}, state.ids) });
-      resetProgressKeepRows();
-    } catch (e) {
-      log('Gagal: ' + e.message);
-      log('Sisi yang sudah berhasil tetap tersimpan; tekan Upload lagi untuk melanjutkan (atau "Mulai dari awal").');
-      if (/404/.test(e.message) || /Unexpected token/.test(e.message)) {
-        log('Catatan: fitur ini butuh backend serverless (/api). Kalau situs ini di-deploy di GitHub Pages (statis murni), fitur upload langsung tidak akan berfungsi — pakai skrip upload-skybox.mjs via terminal sebagai gantinya.');
+      const missing = FACES.filter(f => !done[f.k]);
+      if (!missing.length) {
+        state.uploadType = type;
+        if (onIdsUpdated) onIdsUpdated();
+        log('Selesai! Semua 6 sisi terunggah sebagai ' + type + '.');
+        if (type === 'Decal') {
+          log('Catatan: aset berupa Decal. Kalau skybox tampil putih di game, ambil Image ID dari Asset Manager di Studio.');
+        }
+        window.Vault.addHistory({ t: Date.now(), base, type, ownerId, ids: Object.assign({}, state.ids) });
+        resetProgressKeepRows();
+      } else if (Object.keys(failed).length) {
+        log(missing.length + ' sisi belum selesai (' + missing.map(f => f.k).join(', ') + '). Tekan "Coba lagi" di sisi yang gagal, atau Upload untuk mengulang semuanya yang tersisa.');
+        const msgs = Object.values(failed).map(e => e.message).join(' ');
+        if (/404/.test(msgs) || /Unexpected token/.test(msgs)) {
+          log('Catatan: fitur ini butuh backend serverless (/api). Kalau situs ini di-deploy di GitHub Pages (statis murni), fitur upload langsung tidak akan berfungsi — pakai skrip upload-skybox.mjs via terminal sebagai gantinya.');
+        }
       }
     } finally {
-      btnUpload.disabled = false;
+      running = false; setBusy(false);
     }
   }
 
@@ -166,7 +211,7 @@ window.RobloxUpload = (function () {
     const gb = mk('div', { className: 'row' }, gate); window.Auth.buttons(gb, false);
 
     const note = mk('p', { className: 'note' }, det);
-    note.innerHTML = 'Butuh <a href="https://create.roblox.com/dashboard/credentials" target="_blank" rel="noopener">Open Cloud API Key</a> dengan permission <strong>Assets</strong> (Read + Write). API key dikirim ke endpoint proyek ini (<code>/api/roblox-create</code>), diteruskan langsung ke Roblox, dan tidak disimpan di server. Di browser, key hanya tersimpan kalau kamu menekan <strong>Simpan akun</strong>. Fitur ini butuh backend (jalan di Vercel), tidak jalan di hosting statis murni seperti GitHub Pages.';
+    note.innerHTML = 'Butuh <a href="https://create.roblox.com/dashboard/credentials" target="_blank" rel="noopener">Open Cloud API Key</a> dengan permission <strong>Assets</strong> (Read + Write). API key dikirim ke endpoint proyek ini (<code>/api/roblox-create</code>), diteruskan langsung ke Roblox, dan tidak disimpan di server. Di browser ini, key diingat otomatis (terenkripsi) setelah upload pertama berhasil, jadi tidak perlu dimasukkan lagi. Fitur ini butuh backend (jalan di Vercel), tidak jalan di hosting statis murni seperti GitHub Pages.';
 
     // Akun tersimpan
     const vb = mk('div', {}, det);
@@ -178,9 +223,12 @@ window.RobloxUpload = (function () {
     const btnDel = mk('button', { type: 'button', textContent: 'Hapus' }, vrow1);
     const vrow2 = mk('div', { className: 'row' }, vb);
     vaultNameInp = mk('input', { type: 'text', placeholder: 'Nama akun (mis. Akun Utama)' }, vrow2);
-    vaultPassInp = mk('input', { type: 'password', placeholder: 'Kata sandi brankas (disarankan)', autocomplete: 'off' }, vrow2);
+    vaultPassInp = mk('input', { type: 'password', placeholder: 'Kata sandi (opsional, lebih aman)', autocomplete: 'off' }, vrow2);
     const btnSave = mk('button', { type: 'button', className: 'primary', textContent: 'Simpan akun' }, vrow2);
-    mk('p', { className: 'note', textContent: 'Isi form di bawah, beri nama, lalu Simpan akun. Dengan kata sandi, API key dienkripsi (AES-GCM) di browser ini; kata sandi dipakai lagi saat menekan Pakai. Tanpa kata sandi, key tersimpan sebagai teks biasa di browser ini.' }, vb);
+    const remLbl = mk('label', {}, vb); remLbl.style.cssText = 'display:flex;gap:6px;align-items:center;margin:6px 0';
+    rememberChk = mk('input', { type: 'checkbox', checked: true }, remLbl);
+    mk('span', { textContent: 'Ingat API key di browser ini (otomatis tersimpan setelah upload pertama berhasil)' }, remLbl);
+    mk('p', { className: 'note', textContent: 'API key disimpan terenkripsi di browser ini dengan kunci perangkat (AES-GCM, tidak bisa diekspor), tidak dikirim ke server, dan terisi otomatis di kunjungan berikutnya. Isi kata sandi kalau mau perlindungan ekstra: kata sandi akan diminta lagi saat menekan Pakai. Jangan simpan key di komputer bersama.' }, vb);
 
     const f1 = mk('div', { className: 'field' }, det);
     mk('label', { textContent: 'API Key' }, f1);
@@ -194,6 +242,7 @@ window.RobloxUpload = (function () {
 
     const row2 = mk('div', { className: 'row' }, det);
     namePrefixInp = mk('input', { type: 'text', placeholder: 'Nama awalan (default: Skybox)' }, row2);
+    if (pendingSuggest) { namePrefixInp.value = pendingSuggest; prefixAuto = pendingSuggest; pendingSuggest = ''; }
     typeSel = mk('select', {}, row2); typeSel.style.cssText = 'min-height:44px;border-radius:8px';
     mk('option', { value: 'auto', textContent: 'Tipe: Otomatis (coba Image, fallback Decal)' }, typeSel);
     mk('option', { value: 'Image', textContent: 'Tipe: Image' }, typeSel);
@@ -206,7 +255,10 @@ window.RobloxUpload = (function () {
       cell.style.cssText = 'border:1px solid var(--line);border-radius:8px;padding:6px 8px;font-size:12px;background:var(--panel2)';
       mk('strong', { textContent: 'Skybox' + f.k }, cell);
       const status = mk('div', { textContent: 'Belum diunggah', className: 'rbx-status' }, cell);
-      rows[f.k] = { status };
+      const retry = mk('button', { type: 'button', textContent: 'Coba lagi', hidden: true }, cell);
+      retry.style.cssText = 'margin-top:4px;min-height:32px;font-size:12px';
+      retry.addEventListener('click', () => run(state, onIdsUpdated, f.k));
+      rows[f.k] = { status, retry };
     });
 
     btnUpload = mk('button', { type: 'button', className: 'primary', textContent: 'Upload ke Roblox' }, det);
@@ -222,12 +274,13 @@ window.RobloxUpload = (function () {
       const list = loadProfiles();
       vaultSel.textContent = '';
       mk('option', { value: '', textContent: list.length ? 'Pilih akun…' : 'Belum ada akun tersimpan' }, vaultSel);
-      list.forEach(p => mk('option', { value: p.id, textContent: p.label + (p.enc ? ' 🔒' : '') }, vaultSel));
+      list.forEach(p => mk('option', { value: p.id, textContent: p.label + (p.enc || p.dev ? ' 🔒' : '') }, vaultSel));
       if (selectId) vaultSel.value = selectId;
     }
     function fill(p) {
       ownerTypeSel.value = p.ownerType; ownerIdInp.value = p.ownerId;
-      namePrefixInp.value = p.prefix || ''; typeSel.value = p.type || 'auto';
+      if (p.prefix) { namePrefixInp.value = p.prefix; prefixAuto = ''; }
+      typeSel.value = p.type || 'auto';
       vaultNameInp.value = p.label;
     }
     async function useProfile(id) {
@@ -238,6 +291,8 @@ window.RobloxUpload = (function () {
         if (p.enc) {
           if (!vaultPassInp.value) { log('Akun "' + p.label + '" terenkripsi: isi kata sandi brankas lalu tekan Pakai.'); return; }
           apiKeyInp.value = await decrypt(p.enc, vaultPassInp.value);
+        } else if (p.dev) {
+          apiKeyInp.value = await window.Vault.deviceDecrypt(p.dev);
         } else if (p.key) apiKeyInp.value = p.key; else { log('Akun "' + p.label + '" belum punya API key di perangkat ini: tempel API key di bawah, lalu tekan Simpan akun.'); return; }
         window.Vault.lastSet(p.id);
         log('Akun "' + p.label + '" dipakai.');
@@ -256,17 +311,41 @@ window.RobloxUpload = (function () {
       if (!label) { log('Beri nama akun dulu.'); return; }
       if (!key) { log('API Key kosong; isi dulu sebelum menyimpan.'); return; }
       if (!/^\d+$/.test(ownerId)) { log('User ID / Group ID harus berupa angka.'); return; }
+      const r = await persist(label, key, ownerId, true);
+      if (r) log('Akun "' + label + '" disimpan' + (r.mode === 'plain' ? ' (tanpa enkripsi).' : ' (terenkripsi).'));
+    });
+
+    // Simpan profil + API key. Urutan: kata sandi > kunci perangkat > teks biasa (hanya kalau perangkat tidak mendukung).
+    async function persist(label, key, ownerId, askPlain) {
       const pass = vaultPassInp.value;
-      if (!pass && !confirm('Tanpa kata sandi, API key disimpan sebagai teks biasa di browser ini. Lanjutkan?')) return;
-      const p = { id: '', label, ownerType: ownerTypeSel.value, ownerId, prefix: namePrefixInp.value.trim(), type: typeSel.value };
-      try { if (pass) p.enc = await encrypt(key, pass); else p.key = key; }
-      catch (e) { log('Enkripsi gagal (butuh HTTPS): ' + e.message); return; }
+      const p = { id: '', label, ownerType: ownerTypeSel.value, ownerId, prefix: namePrefixInp.value.trim() === prefixAuto ? '' : namePrefixInp.value.trim(), type: typeSel.value };
+      let mode = 'dev';
+      try {
+        if (pass) { p.enc = await encrypt(key, pass); mode = 'pass'; }
+        else p.dev = await window.Vault.deviceEncrypt(key);
+      } catch (e) {
+        if (askPlain && !confirm('Enkripsi tidak tersedia di browser ini (butuh HTTPS). Simpan API key sebagai teks biasa?')) return null;
+        if (!askPlain) { log('API key tidak bisa disimpan di browser ini: ' + e.message); return null; }
+        p.key = key; mode = 'plain';
+      }
       const list = loadProfiles(), old = list.find(x => x.label === label);
       p.id = old ? old.id : String(Date.now());
-      if (!saveProfiles(old ? list.map(x => x.id === old.id ? p : x) : list.concat(p))) { log('Gagal menyimpan (penyimpanan browser tidak tersedia).'); return; }
+      if (!saveProfiles(old ? list.map(x => x.id === old.id ? p : x) : list.concat(p))) { log('Gagal menyimpan (penyimpanan browser tidak tersedia).'); return null; }
       window.Vault.lastSet(p.id);
-      refreshVault(p.id); log('Akun "' + label + '" disimpan' + (pass ? ' (terenkripsi).' : ' (tanpa enkripsi).'));
-    });
+      refreshVault(p.id);
+      return { id: p.id, mode };
+    }
+
+    // Dipanggil setelah Roblox menerima API key (sisi pertama berhasil): simpan otomatis kalau "Ingat" aktif.
+    autoSave = async function () {
+      if (!rememberChk.checked) return;
+      const key = apiKeyInp.value.trim(), ownerId = ownerIdInp.value.trim();
+      if (!key || !/^\d+$/.test(ownerId)) return;
+      const cur = loadProfiles().find(x => x.id === vaultSel.value) || loadProfiles().find(x => x.ownerType === ownerTypeSel.value && x.ownerId === ownerId);
+      const label = (cur && cur.label) || vaultNameInp.value.trim().slice(0, 40) || ('Akun ' + ownerId);
+      const r = await persist(label, key, ownerId, false);
+      if (r) { vaultNameInp.value = label; log('API key diingat di browser ini; upload berikutnya tidak perlu memasukkannya lagi.'); }
+    };
 
     window.Auth.ready.then(async user => {
       if (!user) { gate.hidden = false; return; }
@@ -275,9 +354,9 @@ window.RobloxUpload = (function () {
       const last = window.Vault.lastGet();
       refreshVault(last);
       const lp = loadProfiles().find(x => x.id === last);
-      if (lp) { if (lp.enc) { fill(lp); log('Akun "' + lp.label + '" tersimpan. Isi kata sandi brankas lalu tekan Pakai.'); } else useProfile(lp.id); }
+      if (lp) { if (lp.enc) { fill(lp); log('Akun "' + lp.label + '" tersimpan. Isi kata sandi lalu tekan Pakai.'); } else useProfile(lp.id); }
     });
   }
 
-  return { build };
+  return { build, suggestPrefix };
 })();

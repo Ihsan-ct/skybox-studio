@@ -17,7 +17,7 @@
     accs.forEach(p => {
       const row = el('div', { className: 'item' }, al);
       const info = el('div', {}, row);
-      el('strong', { textContent: p.label + (p.enc ? ' 🔒' : p.key ? ' ⚠️ tanpa enkripsi' : ' 🔑 key belum ada di perangkat ini') }, info);
+      el('strong', { textContent: p.label + (p.enc || p.dev ? ' 🔒' : p.key ? ' ⚠️ tanpa enkripsi' : ' 🔑 key belum ada di perangkat ini') }, info);
       el('small', { textContent: (p.ownerType === 'group' ? 'Group ' : 'User ') + p.ownerId + ' · awalan ' + (p.prefix || 'Skybox') }, info);
       const act = el('div', { className: 'row' }, row); act.style.marginTop = '0';
       el('button', { type: 'button', textContent: 'Pakai di Upload', onclick: () => { V.lastSet(p.id); location.href = 'studio.html#rbx'; } }, act);
@@ -39,9 +39,12 @@
     if (!label) return msg('Beri nama akun dulu.');
     if (!/^\d+$/.test(ownerId)) return msg('User ID / Group ID harus berupa angka.');
     if (!key) return msg('API Key wajib diisi.');
-    if (!pass && !confirm('Tanpa kata sandi, API key disimpan sebagai teks biasa di browser ini. Lanjutkan?')) return;
     const p = { id: '', label, ownerType: $('fType').value, ownerId, prefix: $('fPrefix').value.trim(), type: 'auto' };
-    try { if (pass) p.enc = await V.encrypt(key, pass); else p.key = key; } catch (e) { return msg('Enkripsi gagal (butuh HTTPS): ' + e.message); }
+    try { if (pass) p.enc = await V.encrypt(key, pass); else p.dev = await V.deviceEncrypt(key); }
+    catch (e) {
+      if (!confirm('Enkripsi tidak tersedia di browser ini (butuh HTTPS). Simpan API key sebagai teks biasa?')) return;
+      p.key = key;
+    }
     const list = V.loadProfiles(), old = list.find(x => x.label === label);
     p.id = old ? old.id : String(Date.now());
     if (!V.saveProfiles(old ? list.map(x => x.id === old.id ? p : x) : list.concat(p))) return msg('Gagal menyimpan (penyimpanan browser tidak tersedia).');
