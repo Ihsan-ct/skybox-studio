@@ -118,6 +118,16 @@
         </div>
         <label class="check"><input type="checkbox" id="celestial"> Tampilkan matahari/bulan (CelestialBodiesShown)</label>
         <label class="check"><input type="checkbox" id="withAtm"> Sertakan Atmosphere (kabut udara — ubah suasana langit)</label>
+        <label class="check"><input type="checkbox" id="withLight" checked> Profil pencahayaan (atur Lighting: jam, ambient, bloom, fog — mengikuti mood langit)</label>
+        <div class="row" id="lightRow" hidden>
+          <select id="lightProfile" aria-label="Profil pencahayaan" style="min-height:40px;border-radius:8px;border:1px solid var(--line);background:var(--panel2);color:var(--text);font:inherit;flex:0 1 260px">
+            <option value="auto" selected>Otomatis — analisis kecerahan gambar</option>
+            <option value="siang">Siang (terang, hangat)</option>
+            <option value="senja">Senja (golden hour)</option>
+            <option value="malam">Malam (gelap, bintang)</option>
+            <option value="horor">Horor (suram, fog tebal)</option>
+          </select>
+        </div>
         <div class="row" id="atmPresetRow" hidden>
           <select id="atmPreset" aria-label="Preset Atmosphere" style="min-height:40px;border-radius:8px;border:1px solid var(--line);background:var(--panel2);color:var(--text);font:inherit;flex:0 1 240px">
             <option value="tipis">Atmosphere: Tipis (semu)</option>

@@ -234,6 +234,7 @@
     $('fileinfo').textContent = info;
     $('empty').hidden = true;
     const pk = document.getElementById('panel-konversi'); if (pk) pk.classList.remove('no-img');
+    if (typeof detectMood === 'function') detectMood();
     $('btnZip').disabled = false;
     $('btnCrossPng').disabled = false;
     document.querySelectorAll('#facebtns button').forEach(b => b.disabled = false);
@@ -764,7 +765,7 @@
   // Script muncul otomatis di tab Upload Roblox begitu ke-6 Image ID terisi (dari upload atau input manual).
   let luauShown = false;
   function refreshLuau() {
-    $('luau').textContent = window.LuauGen.buildLuau(state.ids, $('celestial').checked, atmOpts());
+    $('luau').textContent = window.LuauGen.buildLuau(state.ids, $('celestial').checked, Object.assign(atmOpts(), lightingOpts()));
     const all = GL.FACES.every(f => /^\d+$/.test(String(state.ids[f.k] || '').trim()));
     $('rbxResult').hidden = !all;
     $('decalWarn').hidden = !(all && state.uploadType === 'Decal');
@@ -791,6 +792,30 @@
   $('withAtm').addEventListener('change', () => { $('atmPresetRow').hidden = !$('withAtm').checked; refreshLuau(); });
   $('atmPreset').addEventListener('change', refreshLuau);
   const atmOpts = () => ({ atmosphere: $('withAtm').checked ? $('atmPreset').value : 'none' });
+
+  // Profil pencahayaan: mood terdeteksi otomatis dari kecerahan panorama.
+  let moodDetected = null;
+  function detectMood() {
+    if (!state.image || !state.image.source) return null;
+    try {
+      const c = document.createElement('canvas'); c.width = 64; c.height = 32;
+      const g = c.getContext('2d', { willReadFrequently: true });
+      g.drawImage(state.image.source, 0, 0, 64, 32);
+      const d = g.getImageData(0, 0, 64, 32).data;
+      let sum = 0, n = 0;
+      for (let i = 0; i < d.length; i += 4) { sum += (d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114); n++; }
+      const lum = sum / n;
+      moodDetected = lum < 55 ? 'malam' : lum < 105 ? 'horor' : lum < 158 ? 'senja' : 'siang';
+      return moodDetected;
+    } catch (e) { return null; }
+  }
+  $('withLight').addEventListener('change', () => { $('lightRow').hidden = !$('withLight').checked; refreshLuau(); });
+  $('lightProfile').addEventListener('change', refreshLuau);
+  const lightingOpts = () => {
+    if (!$('withLight').checked) return { lighting: 'none' };
+    const v = $('lightProfile').value;
+    return { lighting: v === 'auto' ? (moodDetected || detectMood() || 'siang') : v };
+  };
 
   $('btnView3d').addEventListener('click', () => {
     switchTab('konversi');
@@ -945,7 +970,7 @@
   }
 
   $('btnRbxmx').addEventListener('click', () => {
-    const xml = window.LuauGen.buildRbxmx(state.ids, $('celestial').checked, atmOpts());
+    const xml = window.LuauGen.buildRbxmx(state.ids, $('celestial').checked, Object.assign(atmOpts(), lightingOpts()));
     const a = document.createElement('a');
     const url = URL.createObjectURL(new Blob([xml], { type: 'application/xml' }));
     a.href = url; a.download = 'Sky.rbxmx';

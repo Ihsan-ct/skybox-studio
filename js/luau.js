@@ -13,21 +13,24 @@ window.LuauGen = (function () {
     tebal: { Density: 0.5, Offset: 0.4, Glare: 0.45, Haze: 3.4 }
   };
   const atmOf = p => ATM[p] || null;
+  // Profil pencahayaan ala "skybox + lighting": mood langit menentukan setelan
+  // Lighting Roblox + efek pendukung, bukan cuma dekorasi.
+  const LIGHTING = {
+    auto: null,
+    siang: { ClockTime: 14, Brightness: 3, Ambient: [140, 150, 165], OutdoorAmbient: [150, 168, 200], ExposureCompensation: 0.1, fog: [170, 205, 245], fogEnd: 900, bloom: [0.4, 0.55, 0.95], cc: [0.98, 1.0, 1.06, 0] },
+    senja: { ClockTime: 17.6, Brightness: 2.2, Ambient: [128, 108, 122], OutdoorAmbient: [172, 122, 110], ExposureCompensation: 0.15, fog: [232, 148, 110], fogEnd: 700, bloom: [0.55, 0.6, 0.9], cc: [1.06, 0.98, 1.02, 0.03] },
+    malam: { ClockTime: 0, Brightness: 1.2, Ambient: [38, 44, 62], OutdoorAmbient: [48, 58, 92], ExposureCompensation: 0.2, fog: [22, 34, 62], fogEnd: 520, bloom: [0.7, 0.55, 0.8], cc: [0.88, 0.94, 1.12, 0.02] },
+    horor: { ClockTime: 5.8, Brightness: 1, Ambient: [42, 50, 44], OutdoorAmbient: [58, 72, 60], ExposureCompensation: -0.1, fog: [56, 70, 58], fogEnd: 260, bloom: [0.25, 0.4, 0.7], cc: [0.92, 1.04, 0.9, 0.06] }
+  };
+  const lightingOf = p => LIGHTING[p] || null;
 
   function buildLuau(ids, celestialShown, opts) {
     const id = k => {
       const v = (ids[k] || '').replace(/\D/g, '');
       return 'rbxassetid://' + (v || 'GANTI_DENGAN_IMAGE_ID');
     };
-    const atm = atmOf(opts && opts.atmosphere);
-    const atmLines = atm ? [
-      'local atm = Lighting:FindFirstChildOfClass("Atmosphere") or Instance.new("Atmosphere")',
-      'atm.Density = ' + atm.Density,
-      'atm.Offset = ' + atm.Offset,
-      'atm.Glare = ' + atm.Glare,
-      'atm.Haze = ' + atm.Haze,
-      'atm.Parent = Lighting'
-    ] : [];
+    const atmLines = atmosphereLuau(opts && opts.atmosphere);
+    const lightLines = lightingLuau(opts && opts.lighting);
     return [
       'local Lighting = game:GetService("Lighting")',
       'local sky = Lighting:FindFirstChildOfClass("Sky") or Instance.new("Sky")',
@@ -36,22 +39,90 @@ window.LuauGen = (function () {
       'sky.CelestialBodiesShown = ' + (celestialShown ? 'true' : 'false'),
       'sky.Parent = Lighting',
       ...atmLines,
+      ...lightLines,
       ''
     ].join('\n');
   }
 
-  function atmosphereXml(indent, preset) {
+  function atmosphereLuau(preset) {
+    const atm = atmOf(preset);
+    if (!atm) return [];
+    return [
+      'local atm = Lighting:FindFirstChildOfClass("Atmosphere") or Instance.new("Atmosphere")',
+      'atm.Density = ' + atm.Density,
+      'atm.Offset = ' + atm.Offset,
+      'atm.Glare = ' + atm.Glare,
+      'atm.Haze = ' + atm.Haze,
+      'atm.Parent = Lighting'
+    ];
+  }
+
+  function lightingLuau(profile) {
+    const L = lightingOf(profile);
+    if (!L) return [];
+    const rgb = a => 'Color3.fromRGB(' + a[0] + ', ' + a[1] + ', ' + a[2] + ')';
+    return [
+      '-- Profil pencahayaan NAKA (mood: ' + profile + ')',
+      'Lighting.ClockTime = ' + L.ClockTime,
+      'Lighting.Brightness = ' + L.Brightness,
+      'Lighting.Ambient = ' + rgb(L.Ambient),
+      'Lighting.OutdoorAmbient = ' + rgb(L.OutdoorAmbient),
+      'Lighting.ExposureCompensation = ' + L.ExposureCompensation,
+      'Lighting.FogColor = ' + rgb(L.fog),
+      'Lighting.FogEnd = ' + L.fogEnd,
+      'local bloom = Lighting:FindFirstChildOfClass("BloomEffect") or Instance.new("BloomEffect")',
+      'bloom.Intensity = ' + L.bloom[0],
+      'bloom.Size = ' + L.bloom[1],
+      'bloom.Threshold = ' + L.bloom[2],
+      'bloom.Parent = Lighting',
+      'local cc = Lighting:FindFirstChildOfClass("ColorCorrectionEffect") or Instance.new("ColorCorrectionEffect")',
+      'cc.Brightness = ' + L.cc[0],
+      'cc.Contrast = ' + L.cc[1],
+      'cc.Saturation = ' + L.cc[2],
+      'cc.TintColor = ' + rgb([Math.round(L.cc[3] * 255), Math.round((1 - L.cc[3]) * 255), 200]),
+      'cc.Parent = Lighting'
+    ];
+  }
+
+  function atmosphereXml(indent, preset, refBase) {
     const atm = atmOf(preset);
     if (!atm) return [];
     const pad = indent || '  ';
     return [
-      pad + '<Item class="Atmosphere" referent="' + (arguments[2] || 'RBXA') + '">',
+      pad + '<Item class="Atmosphere" referent="' + (refBase || 'RBXA') + '">',
       pad + '  <Properties>',
       pad + '    <string name="Name">Atmosphere</string>',
       pad + '    <float name="Density">' + atm.Density + '</float>',
       pad + '    <float name="Offset">' + atm.Offset + '</float>',
       pad + '    <float name="Glare">' + atm.Glare + '</float>',
       pad + '    <float name="Haze">' + atm.Haze + '</float>',
+      pad + '  </Properties>',
+      pad + '</Item>'
+    ];
+  }
+
+  function lightingXml(indent, profile, refBase) {
+    const L = lightingOf(profile);
+    if (!L) return [];
+    const pad = indent || '  ';
+    const rgbx = a => (a[0] / 255) + ' ' + (a[1] / 255) + ' ' + (a[2] / 255);
+    const tintc = [Math.round(L.cc[3] * 255), Math.round((1 - L.cc[3]) * 255), 200];
+    return [
+      pad + '<Item class="BloomEffect" referent="' + refBase + 'B">',
+      pad + '  <Properties>',
+      pad + '    <string name="Name">NAKA Bloom</string>',
+      pad + '    <float name="Intensity">' + L.bloom[0] + '</float>',
+      pad + '    <float name="Size">' + L.bloom[1] + '</float>',
+      pad + '    <float name="Threshold">' + L.bloom[2] + '</float>',
+      pad + '  </Properties>',
+      pad + '</Item>',
+      pad + '<Item class="ColorCorrectionEffect" referent="' + refBase + 'C">',
+      pad + '  <Properties>',
+      pad + '    <string name="Name">NAKA Color</string>',
+      pad + '    <float name="Brightness">' + L.cc[0] + '</float>',
+      pad + '    <float name="Contrast">' + L.cc[1] + '</float>',
+      pad + '    <float name="Saturation">' + L.cc[2] + '</float>',
+      pad + '    <Color3uint8 name="TintColor">' + tintc.join(' ') + '</Color3uint8>',
       pad + '  </Properties>',
       pad + '</Item>'
     ];
@@ -76,6 +147,7 @@ window.LuauGen = (function () {
       '    </Properties>',
       '  </Item>',
       ...atmosphereXml('  ', atmPreset, 'RBXA'),
+      ...lightingXml('  ', opts && opts.lighting, 'RBXL'),
       '</roblox>',
       ''
     ].join('\n');

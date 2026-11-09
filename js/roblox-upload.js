@@ -234,7 +234,13 @@ window.RobloxUpload = (function () {
         // Auto-rbxmx: begitu selesai, file Sky langsung diunduh tanpa klik kedua.
         try {
           const cel = document.getElementById('celestial');
-          const xml = window.LuauGen.buildRbxmx(state.ids, cel ? cel.checked : true);
+          const atmC = document.getElementById('withAtm');
+          const lightC = document.getElementById('withLight');
+          const opts = {
+            atmosphere: atmC && atmC.checked ? (document.getElementById('atmPreset') || {}).value || 'normal' : 'none',
+            lighting: lightC && lightC.checked ? (document.getElementById('lightProfile') || {}).value || 'auto' : 'none'
+          };
+          const xml = window.LuauGen.buildRbxmx(state.ids, cel ? cel.checked : true, opts);
           const a = document.createElement('a');
           const url = URL.createObjectURL(new Blob([xml], { type: 'application/xml' }));
           a.href = url; a.download = 'Sky.rbxmx';

@@ -28,6 +28,17 @@ window.PromptLib = (function () {
 
   const CATS = ['Semua', 'Realistis', 'Cuaca', 'Fantasi', 'Antariksa', 'Anime', 'Horor'];
 
+  // Gaya visual (ditambahkan di akhir prompt) — pola "tema + gaya" ala galeri Skybox AI.
+  const STYLES = [
+    { id: 'none', label: 'Tanpa gaya', text: '' },
+    { id: 'photo', label: 'Photorealistic', text: 'photorealistic style, ultra detailed, physically accurate lighting, 8k' },
+    { id: 'anime', label: 'Anime', text: 'anime style, cel shaded, clean outlines, vivid colors' },
+    { id: 'fantasy', label: 'Fantasy Art', text: 'fantasy concept art style, epic scale, painterly brushwork' },
+    { id: 'clay', label: 'Claymation', text: 'claymation style, soft clay texture, stop motion feel' },
+    { id: 'pixel', label: 'Pixel Art', text: 'pixel art style, limited palette, retro game aesthetic' },
+    { id: 'lowpoly', label: 'Low Poly', text: 'low poly 3d render style, faceted geometry, minimal shading' }
+  ];
+
   // Template dasar dengan placeholder [Ganti Ini] — tulis tema apa saja, aturan
   // format panorama (2:1, tepi menyambung, horizon) sudah tertanam di template.
   const TEMPLATE = 'A full 360-degree sky dome of [Ganti Ini], painted as one continuous equirectangular strip at a 2:1 width-to-height ratio. The flat horizon line runs across the exact vertical middle. Treat the far left and far right edges as the SAME joining point of a wraparound sky: keep the sky and clouds right at both side edges plain, low-detail and evenly lit, with no sun, star, bright highlight or cloud clump touching either edge. Sky only — no ground, no buildings, no people, no text.';
@@ -45,7 +56,7 @@ window.PromptLib = (function () {
     const tplSt = mk('span', { textContent: '', role: 'status', style: 'font-size:13px;color:var(--muted)' }, tplRow);
     tplBtn.addEventListener('click', async () => {
       const theme = tplInp.value.trim() || 'a serene sunrise with soft pastel clouds';
-      await copyText(TEMPLATE.replace('[Ganti Ini]', theme), tplSt, 'Tersalin! Tempel ke generator AI kamu.');
+      await copyText(withStyle(TEMPLATE.replace('[Ganti Ini]', theme)) + SUFFIX, tplSt, 'Tersalin' + (activeStyle ? ' (' + activeStyle.label + ')' : '') + '!');
     });
 
     // --- Cara pakai ---
@@ -63,6 +74,23 @@ window.PromptLib = (function () {
     btnNeg.addEventListener('click', async () => {
       await copyText(NEGATIVE, negStatus, 'Negative prompt tersalin!');
     });
+
+    // --- Gaya visual (opsional, menyatu ke semua salinan prompt) ---
+    const styleRow = mk('div', { className: 'row', style: 'flex-wrap:wrap;gap:6px;margin:10px 0' }, root);
+    mk('div', { className: 'seglabel', textContent: 'Gaya visual', style: 'margin:0;flex:0 0 auto;align-self:center' }, styleRow);
+    let activeStyle = null;   // objek STYLES terpilih (null = tanpa gaya)
+    STYLES.forEach(st => {
+      const b = mk('button', { type: 'button', textContent: st.label }, styleRow);
+      b.style.cssText = 'flex:0 1 auto;min-height:36px;font-size:13px';
+      b.dataset.style = st.id;
+      b.addEventListener('click', () => { activeStyle = st; refreshStyle(); });
+    });
+    function refreshStyle() {
+      styleRow.querySelectorAll('button').forEach(b =>
+        b.setAttribute('aria-pressed', String(!!activeStyle && b.dataset.style === activeStyle.id)));
+    }
+    refreshStyle();
+    const withStyle = t => t + (activeStyle && activeStyle.text ? ', ' + activeStyle.text : '');
 
     // --- Filter kategori ---
     const chipRow = mk('div', { className: 'row', style: 'flex-wrap:wrap;gap:6px;margin:10px 0' }, root);
@@ -85,7 +113,9 @@ window.PromptLib = (function () {
       const row = mk('div', { className: 'row' }, card);
       const btn = mk('button', { type: 'button', className: 'primary', textContent: 'Salin prompt' }, row);
       const st = mk('span', { textContent: '', role: 'status', style: 'font-size:13px;color:var(--muted)' }, row);
-      btn.addEventListener('click', async () => { await copyText(txt.textContent, st, 'Tersalin! Tempel ke generator AI kamu.'); });
+      btn.addEventListener('click', async () => {
+        await copyText(withStyle(p.text) + SUFFIX, st, 'Tersalin' + (activeStyle ? ' (' + activeStyle.label + ')' : '') + '! Tempel ke generator AI kamu.');
+      });
       cards.push({ cat: p.cat, card });
     });
 
