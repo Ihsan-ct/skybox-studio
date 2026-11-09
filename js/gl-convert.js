@@ -210,19 +210,38 @@ window.GLConvert = (function () {
     gl.drawArrays(gl.TRIANGLES, 0, 3);
   }
 
+  // Titik jangkar posisi watermark dalam pecahan ukuran sisi (x, y).
+  const WM_ANCHORS = {
+    'tengah': [0.5, 0.5],
+    'kiri-atas': [0.16, 0.16],
+    'kanan-atas': [0.84, 0.16],
+    'kiri-bawah': [0.16, 0.84],
+    'kanan-bawah': [0.84, 0.84]
+  };
+
   function applyWatermark(cctx, faceKey, size, state) {
-    if (faceKey === 'Dn' && state.watermarkImg) {
-      const wm = state.watermarkImg;
-      const scale = (state.watermarkScale || 25) / 100;
-      const opacity = (state.watermarkOpacity || 50) / 100;
-      const wmSize = size * scale;
-      const x = (size - wmSize) / 2;
-      const y = (size - wmSize) / 2;
-      cctx.save();
-      cctx.globalAlpha = opacity;
-      cctx.drawImage(wm, x, y, wmSize, wmSize);
-      cctx.restore();
-    }
+    const wm = state.watermarkImg;
+    if (!wm) return;
+    // state.wmSides: array kunci sisi ('ft','bk','lf','rt','up','dn'). String tunggal
+    // dari perilaku lama ('dn') tetap diterima demi kompatibilitas.
+    let sides = state.wmSides;
+    if (typeof sides === 'string') sides = [sides];
+    if (!Array.isArray(sides) || !sides.length) sides = ['dn'];
+    if (!sides.includes(faceKey.toLowerCase())) return;
+
+    const scale = (state.watermarkScale || 25) / 100;
+    const opacity = (state.watermarkOpacity || 50) / 100;
+    const wmSize = size * scale;
+    const anchor = WM_ANCHORS[state.wmAnchor] || WM_ANCHORS['tengah'];
+    const dx = ((state.wmDx || 0) / 100) * size;
+    const dy = ((state.wmDy || 0) / 100) * size;
+    const rot = ((state.wmRot || 0) * Math.PI) / 180;
+    cctx.save();
+    cctx.globalAlpha = opacity;
+    cctx.translate(anchor[0] * size + dx, anchor[1] * size + dy);
+    if (rot) cctx.rotate(rot);
+    cctx.drawImage(wm, -wmSize / 2, -wmSize / 2, wmSize, wmSize);
+    cctx.restore();
   }
 
   return {

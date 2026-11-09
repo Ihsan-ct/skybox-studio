@@ -7,10 +7,13 @@ Aplikasi web 100% client-side (WebGL + Three.js) tanpa framework dan tanpa build
 2. Preview Cross Net 2D interaktif pada 60 FPS (256 px).
 3. Preview 3D Three.js dengan Roblox Baseplate, dummy character 3D, FOV zoom (40-100), dan drag camera berinersia.
 4. Wireframe Seam mode (EdgesGeometry) tanpa glitch garis diagonal.
-5. Fade Horizon smoothstep dan watermark logo sisi Dn dengan kontrol skala dan opasitas.
-6. Generator script Luau untuk ServerScriptService dengan Image ID numerik (muncul otomatis di tab Upload Roblox setelah upload selesai).
+5. Fade Horizon smoothstep dan watermark logo dengan kontrol sisi (multi-pilih), posisi jangkar, geser, rotasi, skala, dan opasitas.
+6. Generator script Luau untuk ServerScriptService dengan Image ID numerik (muncul otomatis di tab Upload Roblox setelah upload selesai). Tinggal paste di Command Bar Studio (Ctrl+3) — skybox langsung terpasang.
 7. Ekspor individual PNG dan berkas ZIP (512, 1024, 2048 px).
 8. Stitcher: gabungkan 6 sisi skybox kembali menjadi satu panorama untuk diedit ulang.
+9. **Batch Convert**: proses banyak panorama sekaligus menjadi satu ZIP (satu folder per skybox, orientasi properti Roblox), mengikuti pengaturan warna/watermark aktif.
+10. **AI Prompt**: 16 template prompt siap-salin (realistis, cuaca, fantasi, antariksa, anime, horor) dengan aturan format equirectangular 2:1 + negative prompt, untuk dipakai di generator gambar AI mana pun.
+11. **Paket Ganti-Langit**: dari riwayat upload, ekspor satu .rbxmx berisi folder `SkyboxSets` (banyak Sky) + script switcher untuk berganti langit dari dalam game, plus `StarCount`/`SunAngularSize`/`MoonAngularSize` pada setiap file Sky.
 
 ## Struktur Proyek
 ```

@@ -47,6 +47,7 @@
     rotDn: (typeof saved.rotDn === 'number') ? saved.rotDn : 0,
     flipH: false,
     watermarkImg: null, watermarkScale: 25, watermarkOpacity: 50,
+    wmSides: ['dn'], wmAnchor: 'tengah', wmDx: 0, wmDy: 0, wmRot: 0,
     theme: saved.theme || 'auto'
   };
 
@@ -511,6 +512,59 @@
   addSlider($('grpWm'), 'watermarkScale', 'Ukuran Logo', 5, 50, 1, '%');
   addSlider($('grpWm'), 'watermarkOpacity', 'Transparansi', 10, 100, 1, '%');
 
+  // Sisi tempat watermark muncul (pilih banyak), jangkar posisi, geser & rotasi.
+  (function buildWmExtras() {
+    const seglabel = document.createElement('div');
+    seglabel.className = 'seglabel';
+    seglabel.textContent = 'Sisi yang diberi logo (bisa lebih dari satu)';
+    $('grpWm2').appendChild(seglabel);
+    const chipRow = document.createElement('div');
+    chipRow.className = 'row';
+    chipRow.style.flexWrap = 'wrap';
+    chipRow.style.gap = '6px';
+    $('grpWm2').appendChild(chipRow);
+    GL.FACES.forEach(f => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.textContent = f.name;
+      b.dataset.side = f.k.toLowerCase();
+      b.addEventListener('click', () => {
+        const k = b.dataset.side;
+        const i = state.wmSides.indexOf(k);
+        if (i >= 0) state.wmSides.splice(i, 1); else state.wmSides.push(k);
+        if (!state.wmSides.length) state.wmSides = ['dn'];
+        refreshWmChips();
+        requestRender();
+      });
+      chipRow.appendChild(b);
+    });
+    function refreshWmChips() {
+      chipRow.querySelectorAll('button').forEach(b =>
+        b.setAttribute('aria-pressed', String(state.wmSides.includes(b.dataset.side))));
+    }
+    refreshWmChips();
+
+    const anchorWrap = document.createElement('div');
+    anchorWrap.className = 'slider';
+    const anchorLab = document.createElement('label');
+    anchorLab.htmlFor = 'wmAnchor';
+    anchorLab.textContent = 'Posisi logo';
+    const anchorSel = document.createElement('select');
+    anchorSel.id = 'wmAnchor';
+    anchorSel.style.cssText = 'min-height:36px;border-radius:8px;border:1px solid var(--line);background:var(--panel2);color:var(--text)';
+    [['tengah', 'Tengah'], ['kiri-atas', 'Kiri atas'], ['kanan-atas', 'Kanan atas'], ['kiri-bawah', 'Kiri bawah'], ['kanan-bawah', 'Kanan bawah']]
+      .forEach(([v, t]) => { const o = document.createElement('option'); o.value = v; o.textContent = t; anchorSel.appendChild(o); });
+    anchorSel.value = state.wmAnchor;
+    anchorSel.addEventListener('change', () => { state.wmAnchor = anchorSel.value; requestRender(); });
+    anchorWrap.appendChild(anchorLab);
+    anchorWrap.appendChild(anchorSel);
+    $('grpWm2').appendChild(anchorWrap);
+
+    addSlider($('grpWm2'), 'wmDx', 'Geser horizontal', -20, 20, 1, '%');
+    addSlider($('grpWm2'), 'wmDy', 'Geser vertikal', -20, 20, 1, '%');
+    addSlider($('grpWm2'), 'wmRot', 'Rotasi logo', 0, 359, 1, '°');
+  })();
+
   function makeSeg(el, values, labelFn, getFn, setFn) {
     const refresh = () => el.querySelectorAll('button').forEach(b =>
       b.setAttribute('aria-pressed', String(Number(b.dataset.v) === getFn())));
@@ -603,8 +657,10 @@
     setImage(c, c.width, c.height, 'Gambar Uji', null, { skipRatioCheck: true });
   });
 
-  const tabNames = ['cross', '3d', 'rbx', 'stitch'];
+  const tabNames = ['cross', '3d', 'rbx', 'stitch', 'batch', 'prompt'];
   window.Stitcher.build($('panel-stitch'));
+  window.BatchConvert.build($('panel-batch'), state, () => requestRender());
+  window.PromptLib.build($('panel-prompt'));
   if (window.RobloxUpload) window.RobloxUpload.build($('rbxUploadRoot'), state, refreshLuau);
   function switchTab(name) {
     activeTab = name;
@@ -664,6 +720,10 @@
     const all = GL.FACES.every(f => /^\d+$/.test(String(state.ids[f.k] || '').trim()));
     $('rbxResult').hidden = !all;
     $('decalWarn').hidden = !(all && state.uploadType === 'Decal');
+    if (all) {
+      buildSkyPack();          // bangun UI sekali; pemanggilan berikutnya no-op
+      if (buildSkyPack.renderList) buildSkyPack.renderList();
+    }
     if (all && !luauShown) {
       luauShown = true;
       if (activeTab === 'rbx') $('rbxResult').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -682,6 +742,121 @@
   $('celestial').addEventListener('change', refreshLuau);
 
   $('btnView3d').addEventListener('click', () => { switchTab('3d'); window.scrollTo({ top: 0, behavior: 'smooth' }); });
+
+  // ---------- Paket Ganti-Langit (dari riwayat upload) ----------
+  // Satu .rbxmx berisi folder SkyboxSets (satu Sky per skybox pilihan) + script
+  // switcher yang bisa dipasang di ServerScriptService untuk berganti langit dari game.
+  let skyPackBuilt = false;
+  function buildSkyPack() {
+    const root = $('skyPackRoot');
+    if (!root || skyPackBuilt) return;
+    skyPackBuilt = true;
+    const det = document.createElement('details');
+    det.className = 'group';
+    const sum = document.createElement('summary');
+    sum.textContent = 'Paket Ganti-Langit (multi-skybox untuk game)';
+    det.appendChild(sum);
+    root.appendChild(det);
+
+    const note = document.createElement('p');
+    note.className = 'note';
+    note.style.marginTop = '6px';
+    note.textContent = 'Gabungkan beberapa skybox dari riwayat upload jadi satu paket: satu file .rbxmx berisi folder "SkyboxSets" + script yang bisa berganti langit dari dalam game (cocok untuk game multi-map).';
+    det.appendChild(note);
+
+    const listBox = document.createElement('div');
+    listBox.id = 'skyPackList';
+    det.appendChild(listBox);
+
+    const row = document.createElement('div');
+    row.className = 'row';
+    det.appendChild(row);
+    const btnPack = document.createElement('button');
+    btnPack.type = 'button';
+    btnPack.className = 'primary';
+    btnPack.textContent = 'Unduh .rbxmx Paket';
+    const btnSwitch = document.createElement('button');
+    btnSwitch.type = 'button';
+    btnSwitch.textContent = 'Salin Script Ganti-Langit';
+    const st = document.createElement('span');
+    st.id = 'skyPackStatus';
+    st.style.cssText = 'font-size:13px;color:var(--muted)';
+    row.appendChild(btnPack);
+    row.appendChild(btnSwitch);
+    row.appendChild(st);
+
+    function selectedEntries() {
+      return Array.from(listBox.querySelectorAll('input:checked'))
+        .map(cb => ({ name: cb.dataset.name, ids: JSON.parse(cb.dataset.ids) }));
+    }
+    function renderList() {
+      listBox.textContent = '';
+      const hist = (window.Vault && window.Vault.history) ? window.Vault.history() : [];
+      const seen = new Set();
+      const entries = [];
+      hist.forEach(h => {
+        if (!h.ids || seen.has(h.ids.Ft + '|' + h.ids.Up)) return;   // buang duplikat persis
+        seen.add(h.ids.Ft + '|' + h.ids.Up);
+        entries.push({ name: h.base, ids: h.ids, t: h.t });
+      });
+      if (!entries.length) {
+        const p = document.createElement('p');
+        p.className = 'note';
+        p.textContent = 'Belum ada riwayat upload. Selesaikan satu upload (atau isi 6 ID manual), lalu daftar skybox akan muncul di sini.';
+        listBox.appendChild(p);
+        btnPack.disabled = true;
+        btnSwitch.disabled = true;
+        return;
+      }
+      entries.forEach((e, i) => {
+        const lab = document.createElement('label');
+        lab.className = 'check';
+        lab.style.display = 'flex';
+        lab.style.alignItems = 'center';
+        lab.style.gap = '6px';
+        lab.style.margin = '4px 0';
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.checked = i === 0;
+        cb.dataset.name = e.name;
+        cb.dataset.ids = JSON.stringify(e.ids);
+        lab.appendChild(cb);
+        const sp = document.createElement('span');
+        sp.textContent = e.name + ' · ' + new Date(e.t).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' });
+        lab.appendChild(sp);
+        listBox.appendChild(lab);
+      });
+      btnPack.disabled = false;
+      btnSwitch.disabled = false;
+    }
+    renderList();
+    buildSkyPack.renderList = renderList;   // biar daftar bisa di-refresh dari refreshLuau
+
+    btnPack.addEventListener('click', () => {
+      const entries = selectedEntries();
+      if (!entries.length) { st.textContent = 'Pilih minimal satu skybox.'; return; }
+      const xml = window.LuauGen.buildSkyPackRbxmx(entries);
+      const a = document.createElement('a');
+      const url = URL.createObjectURL(new Blob([xml], { type: 'application/xml' }));
+      a.href = url; a.download = 'SkyboxSets.rbxmx';
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
+      st.textContent = entries.length + ' skybox dalam paket.';
+    });
+    btnSwitch.addEventListener('click', async () => {
+      const entries = selectedEntries();
+      if (!entries.length) { st.textContent = 'Pilih minimal satu skybox.'; return; }
+      const lua = window.LuauGen.buildSkySwitcherLua(entries);
+      try {
+        await navigator.clipboard.writeText(lua);
+        st.textContent = 'Script ganti-langit tersalin! Buat Script di ServerScriptService, paste, jalankan.';
+      } catch (_) {
+        st.textContent = 'Clipboard ditolak — salin manual dari console (F12).';
+        console.log('--- Script Ganti-Langit ---\n' + lua);
+      }
+      setTimeout(() => { st.textContent = ''; }, 6000);
+    });
+  }
 
   $('btnRbxmx').addEventListener('click', () => {
     const xml = window.LuauGen.buildRbxmx(state.ids, $('celestial').checked);
@@ -715,6 +890,14 @@
   window.MainApp = {
     addBanner,
     loadPanorama: (c, name) => { clearFlat(); setImage(c, c.width, c.height, name, null, { skipRatioCheck: true }); switchTab('cross'); },
+    // Dipakai Batch Convert: pulihkan tekstur preview utama setelah GPU dipakai untuk batch.
+    refreshPreview: () => {
+      if (state.image && state.image.source) {
+        try { GL.uploadTexture(state.image.source); } catch (_) {}
+      }
+      requestRender();
+      if (activeTab === '3d') render3DTextures();
+    },
     onGLContextLost: () => {
       if (!glLostBanner) {
         glLostBanner = addBanner('error', 'Konteks WebGL hilang. Memulihkan grafis...');
