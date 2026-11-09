@@ -349,6 +349,36 @@
   fadeTopWrap.appendChild(fadeTopLab); fadeTopWrap.appendChild(fadeTopInp);
   $('grpPos').appendChild(fadeTopWrap);
 
+  // --- Preset tampilan (tidak mengubah yaw/pitch/horizon, rotasi, atau resolusi) ---
+  const PRESETS = [
+    { name: 'Asli',        v: { brightness: 0,  contrast: 0,  saturation: 100, warmth: 0,   fadeHorizon: 0, fadeTop: 0,  seamBlend: 8 } },
+    { name: 'Malam',       v: { brightness: -5, contrast: 12, saturation: 110, warmth: -25, fadeHorizon: 0, fadeTop: 25, seamBlend: 8 }, topColor: '#0a1030' },
+    { name: 'Sunset',      v: { brightness: 0,  contrast: 10, saturation: 125, warmth: 35,  fadeHorizon: 0, fadeTop: 20, seamBlend: 8 }, topColor: '#2b1233' },
+    { name: 'Siang Cerah', v: { brightness: 4,  contrast: 8,  saturation: 115, warmth: 8,   fadeHorizon: 0, fadeTop: 15, seamBlend: 8 }, topColor: '#4a8fd9' },
+    { name: 'Dingin',      v: { brightness: 0,  contrast: 8,  saturation: 95,  warmth: -40, fadeHorizon: 0, fadeTop: 0,  seamBlend: 8 } },
+    { name: 'Hangat',      v: { brightness: 2,  contrast: 5,  saturation: 108, warmth: 40,  fadeHorizon: 0, fadeTop: 0,  seamBlend: 8 } },
+    { name: 'Dramatis',    v: { brightness: -8, contrast: 25, saturation: 120, warmth: 0,   fadeHorizon: 0, fadeTop: 0,  seamBlend: 8 } }
+  ];
+  (function buildPresets() {
+    const det = document.createElement('details'); det.className = 'group'; det.open = true;
+    const sum = document.createElement('summary'); sum.textContent = 'Preset tampilan';
+    const row = document.createElement('div'); row.className = 'row'; row.style.marginTop = '4px';
+    PRESETS.forEach(pr => {
+      const b = document.createElement('button'); b.type = 'button'; b.textContent = pr.name;
+      b.addEventListener('click', () => {
+        Object.keys(pr.v).forEach(k => setSlider(k, pr.v[k]));
+        if (pr.topColor) { state.fadeTopColor = pr.topColor; fadeTopInp.value = pr.topColor; }
+        savePrefs();
+        requestRender();
+      });
+      row.appendChild(b);
+    });
+    const note = document.createElement('p'); note.className = 'note';
+    note.textContent = 'Titik awal yang cepat. Setelah memilih, sesuaikan lagi slider sesuai selera.';
+    det.appendChild(sum); det.appendChild(row); det.appendChild(note);
+    const host = $('sec-controls'); host.insertBefore(det, host.firstElementChild);
+  })();
+
   addSlider($('grpColor'), 'brightness', 'Brightness', -100, 100, 1, '');
   addSlider($('grpColor'), 'contrast', 'Contrast', -100, 100, 1, '');
   addSlider($('grpColor'), 'saturation', 'Saturation', 0, 200, 1, '%');
