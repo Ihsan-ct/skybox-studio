@@ -44,28 +44,38 @@
   </section>
 
   <section id="sec-preview" class="card" aria-label="Hasil">
-    <div class="tabs" role="tablist" aria-label="Tampilan preview">
-      <button role="tab" id="tab-cross" aria-selected="true" aria-controls="panel-cross" tabindex="0" type="button">Preview Cross</button>
-      <button role="tab" id="tab-3d" aria-selected="false" aria-controls="panel-3d" tabindex="-1" type="button">Preview 3D</button>
-      <button role="tab" id="tab-rbx" aria-selected="false" aria-controls="panel-rbx" tabindex="-1" type="button">Upload Roblox</button>
-      <button role="tab" id="tab-stitch" aria-selected="false" aria-controls="panel-stitch" tabindex="-1" type="button">Stitcher</button>
-      <button role="tab" id="tab-batch" aria-selected="false" aria-controls="panel-batch" tabindex="-1" type="button">Batch</button>
+    <div class="tabs" role="tablist" aria-label="Bagian aplikasi">
+      <button role="tab" id="tab-konversi" aria-selected="true" aria-controls="panel-konversi" tabindex="0" type="button">Konversi</button>
+      <button role="tab" id="tab-roblox" aria-selected="false" aria-controls="panel-roblox" tabindex="-1" type="button">Roblox</button>
+      <button role="tab" id="tab-alat" aria-selected="false" aria-controls="panel-alat" tabindex="-1" type="button">Alat</button>
       <button role="tab" id="tab-prompt" aria-selected="false" aria-controls="panel-prompt" tabindex="-1" type="button">AI Prompt</button>
       <span class="spacer"></span>
       <button id="btnZip" class="primary" type="button" disabled>Unduh ZIP</button>
     </div>
 
-    <div id="panel-cross" role="tabpanel" aria-labelledby="tab-cross">
-      <div class="stage">
-        <canvas id="cross" width="1024" height="768" aria-label="Preview 6 sisi skybox dalam susunan cross"></canvas>
-        <div id="empty">Unggah gambar atau tekan “Gambar Uji” untuk mulai.</div>
+    <!-- ═══ KONVERSI: preview 3D (default) + toggle cross 2D ═══ -->
+    <div id="panel-konversi" role="tabpanel" aria-labelledby="tab-konversi">
+      <div id="empty">
+        <strong>Mulai dalam 3 langkah</strong>
+        <ol>
+          <li>Jatuhkan gambar (panorama 2:1 atau gambar biasa — dikonversi otomatis), atau coba langit contoh di bawah.</li>
+          <li>Atur seperlunya — warna, posisi, dan watermark ada di <em>Pengaturan Lanjutan</em> kalau perlu.</li>
+          <li>Buka tab <strong>Roblox</strong> untuk mengunggah 6 sisi dan memasangnya ke game.</li>
+        </ol>
+        <div class="row" style="gap:8px;flex-wrap:wrap">
+          <button id="smpSiang" type="button">☀️ Coba: Siang Cerah</button>
+          <button id="smpSenja" type="button">🌇 Coba: Senja</button>
+          <button id="smpMalam" type="button">🌙 Coba: Malam Berbintang</button>
+        </div>
       </div>
-      <div class="facebtns" id="facebtns"></div>
-      <div id="status" role="status" aria-live="polite"></div>
-    </div>
-
-    <div id="panel-3d" role="tabpanel" aria-labelledby="tab-3d" hidden>
       <div class="stage" id="stage3d"></div>
+      <div id="crossWrap" hidden>
+        <div class="stage">
+          <canvas id="cross" width="1024" height="768" aria-label="Preview 6 sisi skybox dalam susunan cross"></canvas>
+        </div>
+        <div class="facebtns" id="facebtns"></div>
+        <div id="status" role="status" aria-live="polite"></div>
+      </div>
       <div class="row" style="margin-top:8px; align-items:center; gap:14px;">
         <label class="check"><input type="checkbox" id="chkCharacter" checked> Karakter Roblox</label>
         <label class="check"><input type="checkbox" id="chkBaseplate" checked> Baseplate</label>
@@ -74,24 +84,20 @@
           <label>FOV: <output id="out_fov">75</output></label>
           <input type="range" id="s_fov" min="40" max="100" value="75">
         </div>
+        <button id="btnCrossToggle" type="button" style="margin-left:auto">Lihat Cross 2D</button>
       </div>
     </div>
 
-    <div id="panel-stitch" role="tabpanel" aria-labelledby="tab-stitch" hidden></div>
-
-    <div id="panel-batch" role="tabpanel" aria-labelledby="tab-batch" hidden></div>
-
-    <div id="panel-prompt" role="tabpanel" aria-labelledby="tab-prompt" hidden></div>
-
-    <div id="panel-rbx" role="tabpanel" aria-labelledby="tab-rbx" hidden>
-      <div id="rbxUploadRoot"></div>
+    <!-- ═══ ROBLOX: wizard unggah + pemasangan ═══ -->
+    <div id="panel-roblox" role="tabpanel" aria-labelledby="tab-roblox" hidden>
+      <div id="rbxWizard"></div>
 
       <div id="rbxResult" hidden>
+        <h3 style="margin:14px 0 6px">3 · Pasang ke Roblox</h3>
         <div id="decalWarn" class="card" hidden style="border:1px solid #d9a400;background:rgba(217,164,0,.12);margin:12px 0">
           <strong>⚠️ Aset terunggah sebagai Decal, bukan Image.</strong>
           <p style="margin:6px 0 0">Skybox bisa tampil putih karena ID Decal tidak bisa dipakai di Sky. Cara memperbaiki: di Roblox Studio buka <em>View &gt; Asset Manager</em>, cari gambar (Skybox_Ft dst.), klik kanan &gt; <em>Copy ID</em>, lalu isi ulang tiap sisi di bagian "Sudah punya Image ID? Isi manual" di bawah. Script dan file .rbxmx akan ikut diperbarui.</p>
         </div>
-        <h3 style="margin:14px 0 6px">Pasang ke Roblox</h3>
         <p style="margin-top:0">Ke-6 sisi sudah terunggah. Paling cepat: <strong>salin script Command Bar</strong> di bawah, paste di Studio, Enter — skybox langsung terpasang.</p>
         <div class="row" style="gap:8px;margin-bottom:8px">
           <button id="btnRbxmx" type="button" class="primary">Unduh file Sky (.rbxmx)</button>
@@ -106,24 +112,26 @@
 
         <div id="skyPackRoot" style="margin-top:12px"></div>
 
-        <div class="guide">
-          <h4>Panduan Memasang Skybox ke Roblox</h4>
-          <ol>
-            <li><strong>Gunakan Image ID (Bukan Decal ID):</strong> Klik kanan gambar yang sudah diunggah di Asset Manager &gt; <em>Copy ID</em>. Image ID biasanya dapat disalin dari Asset Manager, tetapi antarmuka Roblox bisa berubah sehingga cek dokumentasi Creator Hub bila skybox tampil putih atau abu-abu.</li>
-            <li><strong>Pasang Script:</strong> Buat <code>Script</code> di dalam <code>ServerScriptService</code>, lalu tempel kode di atas.</li>
-            <li><strong>Jika Sisi Up/Down Terputar:</strong> Gunakan tombol rotasi di grup <em>Koreksi orientasi</em> pada panel kiri aplikasi ini, lalu ekspor ulang.</li>
-          </ol>
-          <h4>Peringatan Moderasi & Hak Cipta</h4>
-          <p>Pastikan gambar mematuhi <em>Roblox Community Standards</em> (bebas dari konten ofensif atau hak cipta pihak ketiga). Roblox dapat mengenakan moderasi pada akun yang mengunggah gambar terlarang.</p>
-        </div>
+        <details class="group" style="margin-top:12px">
+          <summary>Sudah punya Image ID? Isi manual</summary>
+          <p style="margin-top:6px">Isi Image ID tiap sisi (angka saja) kalau kamu mengunggah sendiri lewat Roblox Studio. Script muncul otomatis begitu keenamnya terisi.</p>
+          <div id="idfields"></div>
+        </details>
       </div>
-
-      <details class="group" style="margin-top:12px">
-        <summary>Sudah punya Image ID? Isi manual</summary>
-        <p style="margin-top:6px">Isi Image ID tiap sisi (angka saja) kalau kamu mengunggah sendiri lewat Roblox Studio. Script muncul otomatis begitu keenamnya terisi.</p>
-        <div id="idfields"></div>
-      </details>
     </div>
+
+    <!-- ═══ ALAT: stitcher + batch ═══ -->
+    <div id="panel-alat" role="tabpanel" aria-labelledby="tab-alat" hidden>
+      <div class="row" style="gap:8px;margin-bottom:8px">
+        <button type="button" id="tab-sub-stitch" class="primary" aria-pressed="true">Gabung 6 Sisi</button>
+        <button type="button" id="tab-sub-batch" aria-pressed="false">Batch Convert</button>
+      </div>
+      <div id="sub-stitch"><div id="panel-stitch"></div></div>
+      <div id="sub-batch" hidden><div id="panel-batch"></div></div>
+    </div>
+
+    <!-- ═══ AI PROMPT ═══ -->
+    <div id="panel-prompt" role="tabpanel" aria-labelledby="tab-prompt" hidden></div>
   </section>
 
   <section id="sec-controls" class="card" aria-label="Kontrol">
@@ -143,18 +151,19 @@
       <div class="seg" id="segRes" role="group"></div>
       <p class="note">1024 adalah default yang aman; Roblox bisa menurunkan gambar yang lebih besar.</p>
     </details>
-    <details class="group" open>
-      <summary>Posisi & Horizon</summary>
+    <details class="group">
+      <summary>Pengaturan Lanjutan</summary>
+      <p class="note" style="margin-top:4px">Buat hasil default sudah bagus. Buka bagian ini kalau mau menyetel lebih dalam.</p>
+
+      <div class="seglabel">Posisi &amp; Horizon</div>
       <div id="grpPos"></div>
       <button class="reset" type="button" data-reset="pos">Reset posisi</button>
-    </details>
-    <details class="group" open>
-      <summary>Warna & Suhu</summary>
+
+      <div class="seglabel" style="margin-top:14px">Warna &amp; Suhu</div>
       <div id="grpColor"></div>
       <button class="reset" type="button" data-reset="color">Reset warna</button>
-    </details>
-    <details class="group">
-      <summary>Watermark Sisi & Posisi</summary>
+
+      <div class="seglabel" style="margin-top:14px">Watermark Sisi &amp; Posisi</div>
       <div class="row" style="margin-top:4px;">
         <input type="file" id="wmFile" accept="image/*" hidden>
         <button type="button" class="btn" id="btnWmPick">Pilih Logo</button>
@@ -163,14 +172,14 @@
       <p id="wmName" class="note">Belum ada logo</p>
       <div id="grpWm"></div>
       <div id="grpWm2"></div>
-    </details>
-    <details class="group" open>
-      <summary>Koreksi orientasi</summary>
+
+      <div class="seglabel" style="margin-top:14px">Koreksi orientasi</div>
       <div class="seglabel">Rotasi sisi Up</div>
       <div class="seg" id="segUp" role="group"></div>
       <div class="seglabel">Rotasi sisi Down</div>
       <div class="seg" id="segDn" role="group"></div>
       <label class="check"><input type="checkbox" id="flipH"> Flip horizontal (mirror)</label>
+      <label class="check"><input type="checkbox" id="mirrorDn"> Sisi bawah cermin langit (map melayang)</label>
       <button class="reset" type="button" data-reset="orient">Reset orientasi</button>
     </details>
   </section>
@@ -186,6 +195,7 @@
 <script src="js/stitcher.js"></script>
 <script src="js/batch.js"></script>
 <script src="js/prompt-lib.js"></script>
+<script src="js/samples.js"></script>
 <script src="js/auth.js"></script>
 <script src="js/vault.js"></script>
 <script src="js/roblox-upload.js"></script>

@@ -48,6 +48,7 @@
     flipH: false,
     watermarkImg: null, watermarkScale: 25, watermarkOpacity: 50,
     wmSides: ['dn'], wmAnchor: 'tengah', wmDx: 0, wmDy: 0, wmRot: 0,
+    mirrorDn: false,
     theme: saved.theme || 'auto'
   };
 
@@ -57,7 +58,8 @@
   }, DEFAULTS);
 
   let busy = false;
-  let activeTab = 'cross';
+  let activeTab = 'konversi';
+  let showCross = false;   // panel Konversi: preview 3D (default) atau cross 2D
   const PREVIEW = 256;
 
   const crossCanvases = {};
@@ -152,8 +154,8 @@
     rafPending = true;
     requestAnimationFrame(() => {
       rafPending = false;
-      renderCross();
-      if (activeTab === '3d') schedule3DRender();
+      if (showCross) renderCross();
+      if (activeTab === 'konversi' && !showCross) schedule3DRender();
     });
   }
 
@@ -180,7 +182,7 @@
   }
 
   function render3DTextures() {
-    if (!state.image || busy || activeTab !== '3d') return;
+    if (!state.image || busy || activeTab !== 'konversi' || showCross) return;
     const res3d = 1024;
     GL.setSize(res3d);
 
@@ -269,7 +271,7 @@
     }
 
     requestRender();
-    if (activeTab === '3d') render3DTextures();
+    if (activeTab === 'konversi' && !showCross) render3DTextures();
   }
 
   function loadFile(file) {
@@ -579,7 +581,7 @@
 
   makeSeg($('segRes'), [512, 1024, 2048], v => v + ' px', () => state.exportRes, v => {
     state.exportRes = v;
-    if (activeTab === '3d') schedule3DRender();
+    if (activeTab === 'konversi' && !showCross) schedule3DRender();
   });
   const refUp = makeSeg($('segUp'), [0, 90, 180, 270], v => v + '°', () => state.rotUp, v => { state.rotUp = v; requestRender(); });
   const refDn = makeSeg($('segDn'), [0, 90, 180, 270], v => v + '°', () => state.rotDn, v => { state.rotDn = v; requestRender(); });
@@ -596,7 +598,8 @@
       setSlider('brightness', 0); setSlider('contrast', 0); setSlider('saturation', 100); setSlider('warmth', 0);
     }
     if (g === 'orient') {
-      state.rotUp = 0; state.rotDn = 0; state.flipH = false; $('flipH').checked = false; refUp(); refDn();
+      state.rotUp = 0; state.rotDn = 0; state.flipH = false; state.mirrorDn = false;
+      $('flipH').checked = false; $('mirrorDn').checked = false; refUp(); refDn();
     }
     savePrefs();
     requestRender();
@@ -657,11 +660,38 @@
     setImage(c, c.width, c.height, 'Gambar Uji', null, { skipRatioCheck: true });
   });
 
-  const tabNames = ['cross', '3d', 'rbx', 'stitch', 'batch', 'prompt'];
+  const tabNames = ['konversi', 'roblox', 'alat', 'prompt'];
   window.Stitcher.build($('panel-stitch'));
   window.BatchConvert.build($('panel-batch'), state, () => requestRender());
   window.PromptLib.build($('panel-prompt'));
-  if (window.RobloxUpload) window.RobloxUpload.build($('rbxUploadRoot'), state, refreshLuau);
+  if (window.RobloxUpload) window.RobloxUpload.build($('rbxWizard'), state, refreshLuau);
+
+  // Sub-tab di panel Alat: Stitcher / Batch
+  $('tab-sub-stitch').addEventListener('click', () => {
+    $('sub-stitch').hidden = false; $('sub-batch').hidden = true;
+    $('tab-sub-stitch').classList.add('primary'); $('tab-sub-batch').classList.remove('primary');
+    $('tab-sub-stitch').setAttribute('aria-pressed', 'true'); $('tab-sub-batch').setAttribute('aria-pressed', 'false');
+  });
+  $('tab-sub-batch').addEventListener('click', () => {
+    $('sub-stitch').hidden = true; $('sub-batch').hidden = false;
+    $('tab-sub-batch').classList.add('primary'); $('tab-sub-stitch').classList.remove('primary');
+    $('tab-sub-batch').setAttribute('aria-pressed', 'true'); $('tab-sub-stitch').setAttribute('aria-pressed', 'false');
+  });
+
+  // Toggle preview Cross 2D di dalam tab Konversi (default: 3D).
+  $('btnCrossToggle').addEventListener('click', () => {
+    showCross = !showCross;
+    $('crossWrap').hidden = !showCross;
+    $('btnCrossToggle').textContent = showCross ? 'Kembali ke 3D' : 'Lihat Cross 2D';
+    if (showCross) {
+      V3D.setVisible(false);
+      requestRender();
+    } else {
+      V3D.setVisible(true);
+      render3DTextures();
+    }
+  });
+
   function switchTab(name) {
     activeTab = name;
     tabNames.forEach(t => {
@@ -673,17 +703,16 @@
       panelEl.hidden = !isSel;
     });
 
-    if (name === '3d') {
+    if (name === 'konversi') {
       V3D.init($('stage3d'));
-      V3D.setVisible(true);
-      render3DTextures();
+      V3D.setVisible(!showCross);
+      if (showCross) requestRender(); else render3DTextures();
     } else {
       V3D.setVisible(false);
     }
-    if (name === 'cross') requestRender();
   }
 
-  if (location.hash === '#rbx') switchTab('rbx');
+  if (location.hash === '#rbx' || location.hash === '#roblox') switchTab('roblox');
 
   tabNames.forEach((t, idx) => {
     const tabEl = $(`tab-${t}`);
@@ -726,7 +755,7 @@
     }
     if (all && !luauShown) {
       luauShown = true;
-      if (activeTab === 'rbx') $('rbxResult').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      if (activeTab === 'roblox') $('rbxResult').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
     if (!all) luauShown = false;
   }
@@ -741,7 +770,25 @@
   });
   $('celestial').addEventListener('change', refreshLuau);
 
-  $('btnView3d').addEventListener('click', () => { switchTab('3d'); window.scrollTo({ top: 0, behavior: 'smooth' }); });
+  $('btnView3d').addEventListener('click', () => {
+    switchTab('konversi');
+    if (showCross) $('btnCrossToggle').click();   // kembali ke tampilan 3D
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+
+  // Langit contoh prosedural untuk empty state.
+  if (window.SampleSkies) {
+    window.SampleSkies.kinds.forEach(kind => {
+      const b = $('smp' + kind.charAt(0).toUpperCase() + kind.slice(1));
+      if (!b) return;
+      b.addEventListener('click', () => {
+        const c = window.SampleSkies.make(kind);
+        setImage(c, c.width, c.height, 'Langit contoh (' + kind + ')', null, { skipRatioCheck: true });
+      });
+    });
+  }
+
+  $('mirrorDn').addEventListener('change', e => { state.mirrorDn = e.target.checked; requestRender(); });
 
   // ---------- Paket Ganti-Langit (dari riwayat upload) ----------
   // Satu .rbxmx berisi folder SkyboxSets (satu Sky per skybox pilihan) + script
@@ -889,14 +936,14 @@
 
   window.MainApp = {
     addBanner,
-    loadPanorama: (c, name) => { clearFlat(); setImage(c, c.width, c.height, name, null, { skipRatioCheck: true }); switchTab('cross'); },
+    loadPanorama: (c, name) => { clearFlat(); setImage(c, c.width, c.height, name, null, { skipRatioCheck: true }); switchTab('konversi'); },
     // Dipakai Batch Convert: pulihkan tekstur preview utama setelah GPU dipakai untuk batch.
     refreshPreview: () => {
       if (state.image && state.image.source) {
         try { GL.uploadTexture(state.image.source); } catch (_) {}
       }
       requestRender();
-      if (activeTab === '3d') render3DTextures();
+      if (activeTab === 'konversi' && !showCross) render3DTextures();
     },
     onGLContextLost: () => {
       if (!glLostBanner) {
@@ -913,7 +960,7 @@
       if (state.image) {
         try { GL.uploadTexture(state.image.source); } catch (e) { addBanner('error', 'Gagal memuat ulang tekstur: ' + e.message); return; }
         requestRender();
-        if (activeTab === '3d') render3DTextures();
+        if (activeTab === 'konversi' && !showCross) render3DTextures();
       }
     },
     on3DContextLost: () => {

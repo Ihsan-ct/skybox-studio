@@ -28,8 +28,25 @@ window.PromptLib = (function () {
 
   const CATS = ['Semua', 'Realistis', 'Cuaca', 'Fantasi', 'Antariksa', 'Anime', 'Horor'];
 
+  // Template dasar dengan placeholder [Ganti Ini] — tulis tema apa saja, aturan
+  // format panorama (2:1, tepi menyambung, horizon) sudah tertanam di template.
+  const TEMPLATE = 'A full 360-degree sky dome of [Ganti Ini], painted as one continuous equirectangular strip at a 2:1 width-to-height ratio. The flat horizon line runs across the exact vertical middle. Treat the far left and far right edges as the SAME joining point of a wraparound sky: keep the sky and clouds right at both side edges plain, low-detail and evenly lit, with no sun, star, bright highlight or cloud clump touching either edge. Sky only — no ground, no buildings, no people, no text.';
+
   function build(root) {
     const mk = (tag, props, parent) => { const e = document.createElement(tag); Object.assign(e, props || {}); if (parent) parent.appendChild(e); return e; };
+
+    // --- Template [Ganti Ini] ---
+    const tplCard = mk('div', { style: 'border:1px solid var(--accent);border-radius:10px;padding:10px 12px;background:var(--panel2);margin-bottom:12px' }, root);
+    mk('strong', { textContent: 'Template serbaguna — tulis tema apa saja' }, tplCard);
+    mk('p', { className: 'note', textContent: 'Ganti [Ganti Ini] dengan tema langit yang kamu mau (mis. "a tropical sunset with palm silhouettes"), lalu salin. Aturan format panorama sudah tertanam di template.', style: 'margin:4px 0 8px' }, tplCard);
+    const tplRow = mk('div', { className: 'row', style: 'gap:6px;flex-wrap:wrap' }, tplCard);
+    const tplInp = mk('input', { type: 'text', placeholder: 'a serene sunrise with soft pastel clouds', style: 'flex:1;min-width:220px;min-height:40px;padding:6px 10px;border-radius:8px;border:1px solid var(--line);background:var(--panel);color:var(--text);font:inherit' }, tplRow);
+    const tplBtn = mk('button', { type: 'button', className: 'primary', textContent: 'Salin prompt kustom' }, tplRow);
+    const tplSt = mk('span', { textContent: '', role: 'status', style: 'font-size:13px;color:var(--muted)' }, tplRow);
+    tplBtn.addEventListener('click', async () => {
+      const theme = tplInp.value.trim() || 'a serene sunrise with soft pastel clouds';
+      await copyText(TEMPLATE.replace('[Ganti Ini]', theme), tplSt, 'Tersalin! Tempel ke generator AI kamu.');
+    });
 
     // --- Cara pakai ---
     const guide = mk('div', { className: 'guide' }, root);

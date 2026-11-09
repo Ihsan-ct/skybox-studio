@@ -12,14 +12,18 @@ Aplikasi web 100% client-side (WebGL + Three.js) tanpa framework dan tanpa build
 7. Ekspor individual PNG dan berkas ZIP (512, 1024, 2048 px).
 8. Stitcher: gabungkan 6 sisi skybox kembali menjadi satu panorama untuk diedit ulang.
 9. **Batch Convert**: proses banyak panorama sekaligus menjadi satu ZIP (satu folder per skybox, orientasi properti Roblox), mengikuti pengaturan warna/watermark aktif.
-10. **AI Prompt**: 16 template prompt siap-salin (realistis, cuaca, fantasi, antariksa, anime, horor) dengan aturan format equirectangular 2:1 + negative prompt, untuk dipakai di generator gambar AI mana pun.
-11. **Paket Ganti-Langit**: dari riwayat upload, ekspor satu .rbxmx berisi folder `SkyboxSets` (banyak Sky) + script switcher untuk berganti langit dari dalam game, plus `StarCount`/`SunAngularSize`/`MoonAngularSize` pada setiap file Sky.
+10. **AI Prompt**: 16 template prompt siap-salin (realistis, cuaca, fantasi, antariksa, anime, horor) + template serbaguna dengan placeholder [Ganti Ini] — tulis tema apa saja, aturan format equirectangular 2:1 tetap tertanam, plus negative prompt.
+11. **Alur upload 3 langkah** (Masuk & Akun → Unggah 6 Sisi → Pasang) dengan UI bertingkat: pengaturan lanjutan tergulung, form akun ringkas. Begitu 6 sisi selesai, file Sky.rbxmx **otomatis terunduh** tanpa klik kedua.
+12. **Login pakai Roblox (OAuth)**: opsi upload tanpa API key — token `asset:read`/`asset:write` disimpan server-side dan terikat sesi situs. Aktif dengan env `RBX_OAUTH_CLIENT_ID` + `RBX_OAUTH_CLIENT_SECRET` (OAuth app di Creator Hub, redirect URI `https://<domain>/api/rbx-oauth/callback`).
+13. **Opsi sisi bawah "Cermin langit"**: refleksi langit ke sisi Down, untuk pembuat map melayang.
+14. **Langit contoh prosedural** (Siang/Senja/Malam Berbintang) di empty state — bisa langsung dicoba tanpa punya gambar.
+15. **Paket Ganti-Langit**: dari riwayat upload, ekspor satu .rbxmx berisi folder `SkyboxSets` (banyak Sky) + script switcher untuk berganti langit dari dalam game, plus `StarCount`/`SunAngularSize`/`MoonAngularSize` pada setiap file Sky.
 
 ## Struktur Proyek
 ```
 skybox-studio/
 ├── index.html            # Dashboard utama (akun, ringkasan, riwayat)
-├── studio.html           # Skybox Studio (konversi + upload)
+├── studio.html           # Skybox Studio (konversi + upload, UI 4 tab)
 ├── css/
 │   └── app.css
 ├── js/

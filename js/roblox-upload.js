@@ -15,6 +15,10 @@ window.RobloxUpload = (function () {
   let apiKeyInp, ownerTypeSel, ownerIdInp, namePrefixInp, typeSel, btnUpload, logEl, vaultSel, vaultNameInp, vaultPassInp, rememberChk, autoSave;
   const rows = {};
 
+  // ── Mode OAuth Roblox (jalur cepat tanpa API key) ──
+  let oauthBox, oauthLine, oauthBtnLogin, oauthBtnLogout;
+  let oauthAcc = null;   // { loggedIn, name, picture, userId } | { loggedIn:false }
+
   function log(msg) {
     const p = document.createElement('div');
     p.textContent = msg;
@@ -23,7 +27,7 @@ window.RobloxUpload = (function () {
   }
 
   function setBusy(b) {
-    btnUpload.disabled = b;
+    if (btnUpload) btnUpload.disabled = b;
     PROP_KEYS.forEach(k => { if (rows[k] && rows[k].retry) rows[k].retry.disabled = b; });
   }
   function setRetry(k, show) { if (rows[k] && rows[k].retry) rows[k].retry.hidden = !show; }
@@ -104,23 +108,55 @@ window.RobloxUpload = (function () {
     throw new Error('Waktu tunggu habis (mungkin masih dalam moderasi). Tekan Upload lagi untuk melanjutkan mengecek ' + path + '.');
   }
 
+  // ── Jalur OAuth (token disimpan di server, terikat sesi situs) ──
+  async function oauthUpload(type, name, blob) {
+    const qs = new URLSearchParams({ type, name });
+    const r = await fetch('/api/rbx-oauth/upload?' + qs.toString(), {
+      method: 'POST', headers: { 'Content-Type': 'image/png' }, body: blob
+    });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) {
+      const msg = r.status === 413 ? 'Gambar terlalu besar untuk proxy (batas 4,5 MB).' : (j.error || ('HTTP ' + r.status));
+      const e = new Error(msg); e.status = r.status; throw e;
+    }
+    return j.path;
+  }
+
+  async function oauthPoll(path) {
+    for (let i = 0; i < 40; i++) {
+      await sleep(i === 0 ? 1200 : 1800);
+      const r = await fetch('/api/rbx-oauth/poll?path=' + encodeURIComponent(path));
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(j.error || ('HTTP ' + r.status));
+      if (j.done) {
+        if (j.error) throw new Error('Ditolak Roblox: ' + j.error);
+        if (j.assetId) return j.assetId;
+        throw new Error('Operasi selesai tanpa assetId.');
+      }
+    }
+    throw new Error('Waktu tunggu habis (mungkin masih dalam moderasi). Tekan Upload lagi untuk melanjutkan.');
+  }
+
   const FATAL = [401, 403, 429];
 
-  // only: kunci satu sisi (mis. 'Bk') untuk mencoba ulang sisi itu saja.
-  async function run(state, onIdsUpdated, only) {
-    const apiKey = apiKeyInp.value.trim();
-    const ownerType = ownerTypeSel.value;
-    const ownerId = ownerIdInp.value.trim();
-    const base = (namePrefixInp.value.trim() || 'Skybox').replace(/[^\w\- ]/g, '').slice(0, 40) || 'Skybox';
+  const useOauth = () => !!(oauthAcc && oauthAcc.loggedIn);
 
-    if (!apiKey) { log('API Key wajib diisi.'); return; }
-    if (!/^\d+$/.test(ownerId)) { log('User ID / Group ID harus berupa angka.'); return; }
-    if (!state.image) { log('Belum ada gambar skybox untuk diunggah. Unggah panorama dulu di tab Preview Cross.'); return; }
+  // only: kunci satu properti (mis. 'Rt') untuk mencoba ulang sisi itu saja.
+  async function run(state, onIdsUpdated, only) {
+    const apiKey = apiKeyInp ? apiKeyInp.value.trim() : '';
+    const ownerType = ownerTypeSel ? ownerTypeSel.value : 'user';
+    const ownerId = ownerIdInp ? ownerIdInp.value.trim() : '';
+    const base = ((namePrefixInp && namePrefixInp.value.trim()) || 'Skybox').replace(/[^\w\- ]/g, '').slice(0, 40) || 'Skybox';
+    const oauth = useOauth();
+
+    if (!oauth && !apiKey) { log('API Key wajib diisi (atau pakai "Login pakai Roblox" di atas).'); return; }
+    if (!oauth && !/^\d+$/.test(ownerId)) { log('User ID / Group ID harus berupa angka.'); return; }
+    if (!state.image) { log('Belum ada gambar skybox untuk diunggah. Unggah panorama dulu di tab Konversi.'); return; }
     if (running) return;
 
-    const sig = ownerType + ':' + ownerId + ':' + base;
+    const sig = (oauth ? 'oauth:' + (oauthAcc.userId || '') : ownerType + ':' + ownerId) + ':' + base;
     if (sig !== lastSig) { resetProgress(); lastSig = sig; }
-    let type = doneType || (typeSel.value === 'auto' ? 'Image' : typeSel.value);
+    let type = doneType || (typeSel && typeSel.value === 'auto' ? 'Image' : (typeSel ? typeSel.value : 'Image'));
 
     let saved = false;
     if (!only && !Object.keys(done).length && !Object.keys(pending).length) {   // upload baru: sembunyikan script lama
@@ -131,7 +167,7 @@ window.RobloxUpload = (function () {
     running = true; setBusy(true);
     const targets = only ? PROP_KEYS.filter(k => k === only) : PROP_KEYS;
     targets.forEach(k => { if (!done[k]) setRowStatus(k, 'Menunggu…', false); });
-    log((only ? 'Mencoba ulang Skybox' + only : 'Mulai mengunggah ' + base + '_*') + ' (' + type + ', ' + state.exportRes + 'px)…');
+    log((only ? 'Mencoba ulang Skybox' + only : 'Mulai mengunggah ' + base + '_*') + ' (' + type + ', ' + state.exportRes + 'px, jalur ' + (oauth ? 'OAuth' : 'API key') + ')…');
 
     const failed = {};
     try {
@@ -147,12 +183,12 @@ window.RobloxUpload = (function () {
             const name = base + '_' + k;
             setRowStatus(k, 'Mengunggah…', false);
             try {
-              path = await createAsset(apiKey, type, name, ownerType, ownerId, blob);
+              path = oauth ? await oauthUpload(type, name, blob) : await createAsset(apiKey, type, name, ownerType, ownerId, blob);
             } catch (e) {
-              if (e.status === 400 && typeSel.value === 'auto' && type === 'Image' && !doneType) {
+              if (e.status === 400 && (!typeSel || typeSel.value === 'auto') && type === 'Image' && !doneType) {
                 type = 'Decal';
                 log('Permintaan Image ditolak (400); mencoba Decal…');
-                path = await createAsset(apiKey, type, name, ownerType, ownerId, blob);
+                path = oauth ? await oauthUpload(type, name, blob) : await createAsset(apiKey, type, name, ownerType, ownerId, blob);
               } else throw e;
             }
             doneType = type;
@@ -160,7 +196,7 @@ window.RobloxUpload = (function () {
           }
           setRowStatus(k, 'Diproses Roblox…', false);
           let assetId;
-          try { assetId = await pollOperation(apiKey, path); }
+          try { assetId = oauth ? await oauthPoll(path) : await pollOperation(apiKey, path); }
           catch (e) { if (/Ditolak Roblox/.test(e.message)) delete pending[k]; throw e; }   // ditolak: render ulang saat dicoba lagi
           done[k] = assetId; delete pending[k];
           if (!saved && autoSave) { saved = true; try { await autoSave(); } catch (e) {} }
@@ -188,7 +224,20 @@ window.RobloxUpload = (function () {
         if (type === 'Decal') {
           log('Catatan: aset berupa Decal. Kalau skybox tampil putih di game, ambil Image ID dari Asset Manager di Studio.');
         }
-        window.Vault.addHistory({ t: Date.now(), base, type, ownerId, ids: Object.assign({}, state.ids) });
+        // Auto-rbxmx: begitu selesai, file Sky langsung diunduh tanpa klik kedua.
+        try {
+          const cel = document.getElementById('celestial');
+          const xml = window.LuauGen.buildRbxmx(state.ids, cel ? cel.checked : true);
+          const a = document.createElement('a');
+          const url = URL.createObjectURL(new Blob([xml], { type: 'application/xml' }));
+          a.href = url; a.download = 'Sky.rbxmx';
+          document.body.appendChild(a); a.click(); a.remove();
+          setTimeout(() => URL.revokeObjectURL(url), 2000);
+          log('File Sky.rbxmx terunduh otomatis — drag ke Roblox Studio (atau klik kanan Lighting > Insert From File).');
+        } catch (e) {
+          log('Unduh file Sky.rbxmx lewat tombol di bagian hasil.');
+        }
+        window.Vault.addHistory({ t: Date.now(), base, type, ownerId: oauth ? (oauthAcc.userId || '') : ownerId, ids: Object.assign({}, state.ids) });
         resetProgressKeepRows();
       } else if (Object.keys(failed).length) {
         log(missing.length + ' sisi belum selesai (' + missing.join(', ') + '). Tekan "Coba lagi" di sisi yang gagal, atau Upload untuk mengulang semuanya yang tersisa.');
@@ -211,55 +260,76 @@ window.RobloxUpload = (function () {
   const { loadProfiles, saveProfiles, encrypt, decrypt } = window.Vault;
 
   function build(root, state, onIdsUpdated) {
-    const det = mk('details', { className: 'group', open: true }, root);
-    const sum = mk('summary', { textContent: 'Upload Langsung ke Roblox (Open Cloud)' }, det);
-    det.hidden = true;
-    const gate = mk('div', { className: 'card' }, root); gate.hidden = true;
-    mk('p', { textContent: 'Masuk dulu untuk upload langsung ke Roblox. Konversi panorama, preview, dan ekspor ZIP tetap bebas dipakai tanpa masuk.' }, gate);
+    // ── Langkah 1 · Masuk & Akun ──
+    const s1 = mk('details', { className: 'group', open: true }, root);
+    mk('summary', { textContent: '1 · Masuk & Akun' }, s1);
+
+    // Jalur cepat: OAuth Roblox (aktif kalau server dikonfigurasi).
+    oauthBox = mk('div', { style: 'border:1px solid var(--accent);border-radius:10px;padding:10px 12px;background:var(--panel2);margin:6px 0 10px' }, s1);
+    oauthBox.hidden = true;
+    mk('strong', { textContent: 'Cara cepat — Login pakai Roblox' }, oauthBox);
+    mk('p', { className: 'note', textContent: 'Login dengan akun Roblox resmi (password tidak lewat situs ini), lalu 6 sisi diunggah langsung ke akun kamu — tanpa API key, tanpa User ID.', style: 'margin:6px 0' }, oauthBox);
+    const oauthRow = mk('div', { className: 'row' }, oauthBox);
+    oauthBtnLogin = mk('button', { type: 'button', className: 'primary', textContent: 'Login pakai Roblox' }, oauthRow);
+    oauthBtnLogout = mk('button', { type: 'button', textContent: 'Keluar', hidden: true }, oauthRow);
+    oauthLine = mk('span', { textContent: '', style: 'font-size:13px;color:var(--muted)' }, oauthRow);
+    oauthBtnLogin.addEventListener('click', () => { location.href = '/api/rbx-oauth/login'; });
+    oauthBtnLogout.addEventListener('click', async () => {
+      try { await fetch('/api/rbx-oauth/logout', { method: 'POST' }); } catch (e) {}
+      oauthAcc = null; renderOauth(); log('Sesi Roblox diputus.');
+    });
+
+    // Gerbang login situs (Google/Discord) — API key butuh sesi ini.
+    const gate = mk('div', { className: 'card' }, s1);
+    mk('p', { textContent: 'Masuk dulu (Google/Discord) untuk mengunggah ke Roblox lewat situs ini — atau pakai "Login pakai Roblox" di atas. Konversi panorama, preview, dan ekspor ZIP tetap bebas tanpa masuk.' }, gate);
     const gb = mk('div', { className: 'row' }, gate); window.Auth.buttons(gb, false);
 
-    const note = mk('p', { className: 'note' }, det);
-    note.innerHTML = 'Butuh <a href="https://create.roblox.com/dashboard/credentials" target="_blank" rel="noopener">Open Cloud API Key</a> dengan permission <strong>Assets</strong> (Read + Write). API key dikirim ke endpoint proyek ini (<code>/api/roblox-create</code>), diteruskan langsung ke Roblox, dan tidak disimpan di server. Di browser ini, key diingat otomatis (terenkripsi) setelah upload pertama berhasil, jadi tidak perlu dimasukkan lagi. Fitur ini butuh backend (jalan di Vercel), tidak jalan di hosting statis murni seperti GitHub Pages.';
-    mk('p', { className: 'note', textContent: 'Orientasi otomatis sesuai konvensi Roblox: gambar sisi kiri diunggah sebagai SkyboxRt, sisi kanan sebagai SkyboxLf, sisi Up diputar 90° berlawanan jarum jam, dan sisi Down 90° searah jarum jam. Nama aset mengikuti nama properti, jadi tinggal ditempel ke properti Sky yang namanya sama.' }, det);
-
-    // Akun tersimpan
-    const vb = mk('div', {}, det);
+    // Isi akun (terlihat setelah masuk): vault ringkas + API key + owner.
+    const acc = mk('div', {}, s1);
+    acc.hidden = true;
+    mk('p', { className: 'note', textContent: 'Butuh Open Cloud API Key dengan permission Assets (Read + Write), dibuat di Creator Dashboard. Key diingat otomatis (terenkripsi) setelah upload pertama berhasil. Jalur "Login pakai Roblox" di atas tidak butuh bagian ini.', style: 'margin-top:0' }, acc);
+    const vb = mk('div', {}, acc);
     vb.style.cssText = 'border:1px solid var(--line);border-radius:8px;padding:8px 10px;margin:8px 0;background:var(--panel2)';
     mk('strong', { textContent: 'Akun tersimpan' }, vb);
     const vrow1 = mk('div', { className: 'row' }, vb);
     vaultSel = mk('select', {}, vrow1); vaultSel.style.cssText = 'min-height:44px;border-radius:8px';
     const btnUse = mk('button', { type: 'button', textContent: 'Pakai' }, vrow1);
-    const btnDel = mk('button', { type: 'button', textContent: 'Hapus' }, vrow1);
     const vrow2 = mk('div', { className: 'row' }, vb);
     vaultNameInp = mk('input', { type: 'text', placeholder: 'Nama akun (mis. Akun Utama)' }, vrow2);
-    vaultPassInp = mk('input', { type: 'password', placeholder: 'Kata sandi (opsional, lebih aman)', autocomplete: 'off' }, vrow2);
+    vaultPassInp = mk('input', { type: 'password', placeholder: 'Kata sandi (opsional)', autocomplete: 'off' }, vrow2);
     const btnSave = mk('button', { type: 'button', className: 'primary', textContent: 'Simpan akun' }, vrow2);
     const remLbl = mk('label', {}, vb); remLbl.style.cssText = 'display:flex;gap:6px;align-items:center;margin:6px 0';
     rememberChk = mk('input', { type: 'checkbox', checked: true }, remLbl);
     mk('span', { textContent: 'Ingat API key di browser ini (otomatis tersimpan setelah upload pertama berhasil)' }, remLbl);
-    mk('p', { className: 'note', textContent: 'API key disimpan terenkripsi di browser ini dengan kunci perangkat (AES-GCM, tidak bisa diekspor), tidak dikirim ke server, dan terisi otomatis di kunjungan berikutnya. Isi kata sandi kalau mau perlindungan ekstra: kata sandi akan diminta lagi saat menekan Pakai. Jangan simpan key di komputer bersama.' }, vb);
 
-    const f1 = mk('div', { className: 'field' }, det);
+    const f1 = mk('div', { className: 'field' }, acc);
     mk('label', { textContent: 'API Key' }, f1);
     apiKeyInp = mk('input', { type: 'password', placeholder: 'Open Cloud API Key', autocomplete: 'off' }, f1);
 
-    const row1 = mk('div', { className: 'row' }, det);
+    const row1 = mk('div', { className: 'row' }, acc);
     ownerTypeSel = mk('select', {}, row1); ownerTypeSel.style.cssText = 'min-height:44px;border-radius:8px';
     mk('option', { value: 'user', textContent: 'Milik User' }, ownerTypeSel);
     mk('option', { value: 'group', textContent: 'Milik Group' }, ownerTypeSel);
     ownerIdInp = mk('input', { type: 'text', inputMode: 'numeric', placeholder: 'User ID / Group ID' }, row1);
 
-    const row2 = mk('div', { className: 'row' }, det);
+    const adv = mk('details', { className: 'group' }, acc);
+    mk('summary', { textContent: 'Opsi lanjutan unggahan' }, adv);
+    const row2 = mk('div', { className: 'row' }, adv);
     namePrefixInp = mk('input', { type: 'text', placeholder: 'Nama awalan (default: Skybox)' }, row2);
     if (pendingSuggest) { namePrefixInp.value = pendingSuggest; prefixAuto = pendingSuggest; pendingSuggest = ''; }
     typeSel = mk('select', {}, row2); typeSel.style.cssText = 'min-height:44px;border-radius:8px';
     mk('option', { value: 'auto', textContent: 'Tipe: Otomatis (coba Image, fallback Decal)' }, typeSel);
     mk('option', { value: 'Image', textContent: 'Tipe: Image' }, typeSel);
     mk('option', { value: 'Decal', textContent: 'Tipe: Decal' }, typeSel);
+    const btnDel = mk('button', { type: 'button', textContent: 'Hapus akun tersimpan terpilih' }, adv);
+    btnDel.style.marginTop = '6px';
 
-    const grid = mk('div', {}, det);
+    // ── Langkah 2 · Unggah 6 Sisi ──
+    const s2 = mk('details', { className: 'group', open: true }, root);
+    mk('summary', { textContent: '2 · Unggah 6 Sisi' }, s2);
+    const grid = mk('div', {}, s2);
     grid.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:6px;margin:10px 0';
-    // Label kartu = nama properti Roblox yang diisi: kartu SkyboxRt mengunggah render sisi kiri, dst.
+    // Label kartu = nama properti Roblox yang diisi gambarnya.
     PROP_KEYS.forEach(k => {
       const cell = mk('div', {}, grid);
       cell.style.cssText = 'border:1px solid var(--line);border-radius:8px;padding:6px 8px;font-size:12px;background:var(--panel2)';
@@ -271,19 +341,20 @@ window.RobloxUpload = (function () {
       rows[k] = { status, retry };
     });
 
-    btnUpload = mk('button', { type: 'button', className: 'primary', textContent: 'Upload ke Roblox' }, det);
+    btnUpload = mk('button', { type: 'button', className: 'primary', textContent: 'Upload ke Roblox' }, s2);
     btnUpload.style.marginTop = '4px';
     btnUpload.addEventListener('click', () => run(state, onIdsUpdated));
-    const btnReset = mk('button', { type: 'button', textContent: 'Mulai dari awal' }, det);
+    const btnReset = mk('button', { type: 'button', textContent: 'Mulai dari awal' }, s2);
     btnReset.style.cssText = 'margin:4px 0 0 8px';
     btnReset.addEventListener('click', () => { resetProgress(); log('Progres direset; upload berikutnya mengunggah ke-6 sisi dari awal.'); });
+    mk('p', { className: 'note', textContent: 'Tips: pakai akun alt untuk gambar yang belum yakin lolos moderasi Roblox.', style: 'margin-top:6px' }, s2);
+    logEl = mk('div', { className: 'rbx-log' }, s2);
 
-    logEl = mk('div', { className: 'rbx-log' }, det);
-
+    // ── Vault ──
     function refreshVault(selectId) {
       const list = loadProfiles();
       vaultSel.textContent = '';
-      mk('option', { value: '', textContent: list.length ? 'Pilih akun…' : 'Belum ada akun tersimpan' }, vaultSel);
+      mk('option', { value: '', textContent: list.length ? 'Pilih akun tersimpan…' : 'Belum ada akun tersimpan' }, vaultSel);
       list.forEach(p => mk('option', { value: p.id, textContent: p.label + (p.enc || p.dev ? ' 🔒' : '') }, vaultSel));
       if (selectId) vaultSel.value = selectId;
     }
@@ -325,7 +396,6 @@ window.RobloxUpload = (function () {
       if (r) log('Akun "' + label + '" disimpan' + (r.mode === 'plain' ? ' (tanpa enkripsi).' : ' (terenkripsi).'));
     });
 
-    // Simpan profil + API key. Urutan: kata sandi > kunci perangkat > teks biasa (hanya kalau perangkat tidak mendukung).
     async function persist(label, key, ownerId, askPlain) {
       const pass = vaultPassInp.value;
       const p = { id: '', label, ownerType: ownerTypeSel.value, ownerId, prefix: namePrefixInp.value.trim() === prefixAuto ? '' : namePrefixInp.value.trim(), type: typeSel.value };
@@ -357,9 +427,33 @@ window.RobloxUpload = (function () {
       if (r) { vaultNameInp.value = label; log('API key diingat di browser ini; upload berikutnya tidak perlu memasukkannya lagi.'); }
     };
 
+    // ── OAuth status check + gate sesi situs ──
+    function renderOauth() {
+      const logged = !!(oauthAcc && oauthAcc.loggedIn);
+      oauthBtnLogin.hidden = logged;
+      oauthBtnLogout.hidden = !logged;
+      oauthLine.textContent = logged
+        ? 'Login sebagai ' + (oauthAcc.name || 'Roblox') + ' — upload otomatis aktif.'
+        : 'Status: belum terhubung.';
+    }
+    async function checkOauth() {
+      try {
+        const r = await fetch('/api/rbx-oauth/status');
+        const j = await r.json();
+        if (!j.configured) { oauthBox.hidden = true; return; }
+        oauthBox.hidden = false;
+        const m = await fetch('/api/rbx-oauth/me').then(x => x.ok ? x.json() : { loggedIn: false }).catch(() => ({ loggedIn: false }));
+        oauthAcc = m;
+        renderOauth();
+        if (m && m.loggedIn) log('Login Roblox (' + (m.name || '') + ') aktif — jalur cepat dipakai, API key tidak perlu.');
+      } catch (e) { oauthBox.hidden = true; }
+    }
+    checkOauth();
+
     window.Auth.ready.then(async user => {
-      if (!user) { gate.hidden = false; return; }
-      window.Vault.setUser(user.id); det.hidden = false;
+      await checkOauth();
+      if (!user) { gate.hidden = false; acc.hidden = true; return; }
+      window.Vault.setUser(user.id); gate.hidden = true; acc.hidden = false;
       await window.Vault.pull();
       const last = window.Vault.lastGet();
       refreshVault(last);
