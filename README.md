@@ -25,8 +25,12 @@ skybox-studio/
 │   ├── zip-export.js     # ekspor PNG / ZIP
 │   ├── luau.js           # generator script Luau
 │   ├── stitcher.js       # gabungkan 6 sisi -> panorama
+│   ├── roblox-upload.js  # UI + orkestrasi upload langsung ke Roblox
 │   └── main.js           # wiring UI + state aplikasi
-├── upload-skybox.mjs     # CLI upload ke Roblox Open Cloud
+├── api/
+│   ├── roblox-create.js  # Serverless Function: proxy buat asset (hindari CORS)
+│   └── roblox-poll.js    # Serverless Function: proxy cek status operation
+├── upload-skybox.mjs     # CLI upload ke Roblox Open Cloud (alternatif tanpa backend)
 ├── vercel.json
 ├── package.json
 └── LICENSE
@@ -47,8 +51,15 @@ Lalu buka `http://localhost:8080` (atau port yang ditampilkan).
 - Vercel: Framework Preset "Other", Output Directory ".", `vercel.json` sudah set `cleanUrls` dan `framework: null`.
 - GitHub Pages: Deploy dari branch `main`, folder root.
 
-## Skrip upload-skybox.mjs
-Gunakan kredensial `ROBLOX_API_KEY` untuk unggah 6 sisi langsung ke Open Cloud Assets API.
+## Upload Langsung ke Roblox (dari browser)
+Di tab **Script Luau**, ada panel "Upload Langsung ke Roblox (Open Cloud)". Masukkan Open Cloud API Key (permission **Add assets**) dan User ID/Group ID, lalu klik **Upload ke Roblox** — 6 sisi dirender dan diunggah otomatis, Image ID langsung terisi di form script Luau.
+
+Ini jalan lewat 2 Serverless Function (`api/roblox-create.js` dan `api/roblox-poll.js`) karena Roblox Open Cloud API tidak mengizinkan request langsung dari browser (CORS diblokir). Request dari browser ke `/api/*` itu same-origin, lalu diteruskan server-to-server ke Roblox — API key tidak disimpan di mana pun, hanya diteruskan apa adanya per request.
+
+**Keterbatasan:** fitur ini butuh backend (jalan di Vercel atau hosting lain yang mendukung Node serverless functions). **Tidak jalan di GitHub Pages** karena itu hosting statis murni tanpa backend — di sana, pakai cara skrip terminal di bawah ini sebagai gantinya.
+
+## Skrip upload-skybox.mjs (alternatif via terminal)
+Gunakan kredensial `ROBLOX_API_KEY` untuk unggah 6 sisi langsung ke Open Cloud Assets API dari command line — cocok untuk otomasi/CI, atau kalau kamu deploy situsnya di hosting statis murni (GitHub Pages) yang tidak punya backend.
 
 ```bash
 export ROBLOX_API_KEY="kunci_open_cloud_kamu"

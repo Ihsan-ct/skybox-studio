@@ -117,4 +117,6 @@ pre { background: var(--panel2); border: 1px solid var(--line); border-radius: 8
 .guide li { margin: 4px 0; }
 .guide strong { color: var(--text); }
 [hidden] { display: none !important; }
-@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }.rbx-status { color: var(--muted); margin-top: 2px; }
+.rbx-status.ok { color: var(--accent); font-weight: 600; }
+.rbx-log { margin-top: 10px; max-height: 140px; overflow: auto; font-size: 12px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 8px; }

@@ -497,6 +497,7 @@
 
   const tabNames = ['cross', '3d', 'luau', 'stitch'];
   window.Stitcher.build($('panel-stitch'));
+  if (window.RobloxUpload) window.RobloxUpload.build($('rbxUploadRoot'), state, refreshLuau);
   function switchTab(name) {
     activeTab = name;
     tabNames.forEach(t => {
