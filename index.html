@@ -11,6 +11,9 @@
   <meta property="og:title" content="NAKA Studio">
   <meta property="og:description" content="Ubah panorama 360° menjadi 6 sisi skybox Roblox dan upload langsung ke Roblox.">
   <meta property="og:type" content="website">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600;700&display=swap">
   <link rel="stylesheet" href="css/app.css">
   <style>
     .dash { max-width: 1100px; margin: 0 auto; padding: 12px 16px 32px; display: grid; gap: 14px; }
@@ -29,7 +32,7 @@
     .empty { color: var(--muted); font-size: 13px; margin: 4px 0; }
     .form { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 8px; margin-top: 10px; }
     .form input, .form select { width: 100%; min-height: 40px; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel2); color: var(--text); font: inherit; }
-      .hero { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 28px; align-items: center; padding: 28px 4px 8px; }
+      .hero { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 28px; align-items: center; padding: 30px 26px; background: linear-gradient(180deg, rgba(63,182,255,.06), transparent 60%); border: 1px solid var(--line-glow); border-radius: 18px; box-shadow: 0 10px 40px rgba(2,8,24,.4); }
     .hero h2 { font-size: clamp(28px, 4.4vw, 46px); line-height: 1.08; margin: 0 0 12px; letter-spacing: -.03em; }
     .hero p { color: var(--muted); font-size: 17px; max-width: 52ch; margin: 0 0 18px; }
     .hero .row { margin-top: 0; }
@@ -66,6 +69,7 @@
 <main class="dash" id="main">
   <section class="hero" aria-label="Pengantar">
     <div>
+      <img src="assets/logo-header.png" alt="NAKA Studio" style="height:110px;filter:drop-shadow(0 0 26px rgba(63,182,255,.45));margin-bottom:6px">
       <h2>Dari panorama 360° ke langit game Roblox kamu.</h2>
       <p>Ubah satu foto panorama menjadi enam sisi skybox tanpa celah sambungan, lihat hasilnya di 3D, lalu kirim langsung ke akun Roblox. Semua pemrosesan berjalan di browser kamu.</p>
       <div class="row">

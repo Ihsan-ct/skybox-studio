@@ -777,13 +777,26 @@
     window.scrollTo({ top: 0, behavior: 'smooth' });
   });
 
-  // Langit contoh prosedural untuk empty state.
+  // Langit contoh prosedural untuk empty state — kartu visual dengan thumbnail.
   if (window.SampleSkies) {
+    const smpLabel = { siang: 'Siang Cerah', senja: 'Senja', malam: 'Malam Berbintang' };
     window.SampleSkies.kinds.forEach(kind => {
       const b = $('smp' + kind.charAt(0).toUpperCase() + kind.slice(1));
       if (!b) return;
+      const c = window.SampleSkies.make(kind);
+      const thumb = document.createElement('canvas');
+      thumb.width = 384; thumb.height = 192;
+      thumb.getContext('2d').drawImage(c, 0, 0, 384, 192);
+      const img = new Image();
+      img.src = thumb.toDataURL('image/jpeg', 0.82);
+      img.alt = '';
+      b.textContent = '';
+      b.classList.add('smp');
+      b.appendChild(img);
+      const sp = document.createElement('span');
+      sp.textContent = 'Coba: ' + (smpLabel[kind] || kind);
+      b.appendChild(sp);
       b.addEventListener('click', () => {
-        const c = window.SampleSkies.make(kind);
         setImage(c, c.width, c.height, 'Langit contoh (' + kind + ')', null, { skipRatioCheck: true });
       });
     });

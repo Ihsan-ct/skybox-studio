@@ -233,3 +233,131 @@ pre { background: #08101f; border: 1px solid var(--line); border-radius: 10px; p
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--line); border-radius: 99px; border: 2px solid var(--bg); }
 ::-webkit-scrollbar-thumb:hover { background: color-mix(in srgb, var(--accent) 45%, var(--line)); }
+
+/* ═══════════════════════════════════════════════════════════
+   v2 polish — lapisan signature HUD NAKA (bukan template generik)
+   ═══════════════════════════════════════════════════════════ */
+
+/* Font display techy untuk semua heading & elemen UI utama */
+h1, h2, h3, .tabs [role=tab], .cta, details.group > summary, #empty strong, .brand h1 {
+  font-family: "Space Grotesk", "Inter", system-ui, sans-serif;
+}
+
+/* Bintang statik bertabur (3 lapis ukuran beda biar alami) */
+body {
+  background-image:
+    radial-gradient(1.3px 1.3px at 11% 21%, rgba(255,255,255,.65) 50%, transparent 51%),
+    radial-gradient(1px 1px at 41% 67%, rgba(180,220,255,.5) 50%, transparent 51%),
+    radial-gradient(1.6px 1.6px at 73% 14%, rgba(255,255,255,.4) 50%, transparent 51%),
+    radial-gradient(1px 1px at 86% 49%, rgba(150,200,255,.45) 50%, transparent 51%),
+    radial-gradient(1.2px 1.2px at 57% 83%, rgba(255,255,255,.35) 50%, transparent 51%),
+    radial-gradient(1px 1px at 27% 91%, rgba(160,210,255,.4) 50%, transparent 51%),
+    radial-gradient(1100px 460px at 50% -180px, rgba(47, 140, 255, .13), transparent 70%),
+    radial-gradient(900px 420px at 88% 8%, rgba(53, 220, 255, .06), transparent 70%),
+    var(--bg);
+  background-size: 617px 617px, 843px 843px, 1011px 1011px, 727px 727px, 933px 933px, 673px 673px, auto, auto, auto;
+}
+:root[data-theme="light"] body, :root:not([data-theme="dark"]) body { }
+
+/* Aurora blobs mengambang (2 lumbar cyan-biru, gerak lambat) */
+body::before, body::after {
+  content: ""; position: fixed; z-index: -1; border-radius: 50%;
+  filter: blur(80px); pointer-events: none;
+}
+body::before {
+  width: 58vw; height: 58vw; max-width: 880px; max-height: 880px;
+  left: -14vw; top: -20vh;
+  background: radial-gradient(circle at 42% 42%, rgba(47, 140, 255, .15), transparent 64%);
+  animation: auroraA 26s ease-in-out infinite alternate;
+}
+body::after {
+  width: 48vw; height: 48vw; max-width: 740px; max-height: 740px;
+  right: -15vw; bottom: -24vh;
+  background: radial-gradient(circle at 55% 45%, rgba(53, 220, 255, .11), transparent 64%);
+  animation: auroraB 31s ease-in-out infinite alternate;
+}
+@keyframes auroraA { to { transform: translate(9vw, 7vh) scale(1.14); } }
+@keyframes auroraB { to { transform: translate(-8vw, -7vh) scale(1.1); } }
+
+/* Corner brackets HUD di kartu utama */
+.card, #empty {
+  position: relative;
+}
+.card::before, #empty::before {
+  content: ""; position: absolute; inset: 0; pointer-events: none; border-radius: inherit;
+  background:
+    linear-gradient(var(--accent-2), var(--accent-2)) top left / 20px 2px no-repeat,
+    linear-gradient(var(--accent-2), var(--accent-2)) top left / 2px 20px no-repeat,
+    linear-gradient(var(--accent-2), var(--accent-2)) top right / 20px 2px no-repeat,
+    linear-gradient(var(--accent-2), var(--accent-2)) top right / 2px 20px no-repeat,
+    linear-gradient(var(--accent-2), var(--accent-2)) bottom left / 20px 2px no-repeat,
+    linear-gradient(var(--accent-2), var(--accent-2)) bottom left / 2px 20px no-repeat,
+    linear-gradient(var(--accent-2), var(--accent-2)) bottom right / 20px 2px no-repeat,
+    linear-gradient(var(--accent-2), var(--accent-2)) bottom right / 2px 20px no-repeat;
+  opacity: .45;
+}
+#drop { position: relative; }
+#drop::before {
+  content: ""; position: absolute; inset: 0; pointer-events: none; border-radius: inherit;
+  background:
+    linear-gradient(var(--accent-2), var(--accent-2)) top left / 18px 2px no-repeat,
+    linear-gradient(var(--accent-2), var(--accent-2)) top left / 2px 18px no-repeat,
+    linear-gradient(var(--accent-2), var(--accent-2)) bottom right / 18px 2px no-repeat,
+    linear-gradient(var(--accent-2), var(--accent-2)) bottom right / 2px 18px no-repeat;
+  opacity: .6;
+}
+
+/* Shimmer: tombol utama dengan gradien bergerak */
+button.primary, .cta.primary,
+.tabs [role=tab][aria-selected="true"],
+.seg button[aria-pressed="true"],
+.topnav a[aria-current="page"] {
+  background: linear-gradient(115deg, #2f8cff 0%, #35d5ff 38%, #8fecff 50%, #35d5ff 62%, #2f8cff 100%);
+  background-size: 230% 100%;
+  animation: nakaShimmer 3.4s linear infinite;
+}
+@keyframes nakaShimmer { from { background-position: 0% 0; } to { background-position: 230% 0; } }
+
+/* Logo header bernapas */
+header .brand .logo-img { animation: logoPulse 4.5s ease-in-out infinite; }
+@keyframes logoPulse {
+  0%, 100% { filter: drop-shadow(0 0 7px rgba(63, 182, 255, .4)); }
+  50% { filter: drop-shadow(0 0 15px rgba(53, 220, 255, .68)); }
+}
+
+/* Frame stage dengan vignette + wash diagonal */
+#stage3d::after, .stage::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none; border-radius: inherit;
+  background: linear-gradient(118deg, rgba(63, 182, 255, .07), transparent 32%, transparent 68%, rgba(53, 220, 255, .06));
+  box-shadow: inset 0 0 52px rgba(5, 16, 40, .6);
+}
+
+/* Tab aktif: titik indikator */
+.tabs [role=tab][aria-selected="true"] { position: relative; }
+.tabs [role=tab][aria-selected="true"]::after {
+  content: ""; position: absolute; left: 50%; bottom: 5px; transform: translateX(-50%);
+  width: 5px; height: 5px; border-radius: 50%;
+  background: var(--accent-ink); box-shadow: 0 0 6px rgba(4, 16, 31, .8);
+  opacity: .85;
+}
+
+/* ── Empty state 2.0: kartu langit contoh visual ── */
+#empty .row button.smp {
+  flex: 0 0 196px; width: 196px; height: 96px; padding: 0; overflow: hidden;
+  position: relative; border-radius: 12px; isolation: isolate; max-width: 100%;
+}
+#empty .row button.smp img {
+  position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;
+  transition: transform .25s ease; z-index: 0;
+}
+#empty .row button.smp:hover img { transform: scale(1.07); }
+#empty .row button.smp span {
+  position: absolute; inset: auto 0 0 0; z-index: 1; padding: 22px 10px 8px;
+  background: linear-gradient(transparent, rgba(4, 10, 25, .88));
+  color: #eaf3ff; font-size: 13px; font-weight: 700; text-align: left;
+  font-family: "Space Grotesk", "Inter", sans-serif; letter-spacing: .01em;
+}
+#empty .row button.smp:hover { border-color: var(--accent-2); box-shadow: 0 0 18px rgba(53, 220, 255, .3); }
+
+/* Kartu wizard bernomor */
+#rbxWizard details.group > summary, #skyPackRoot details.group > summary { letter-spacing: .01em; }
