@@ -1,4 +1,4 @@
-﻿"use strict";
+"use strict";
 window.GLConvert = (function () {
   const PI = Math.PI;
   const FACES = [
@@ -26,6 +26,7 @@ window.GLConvert = (function () {
     'uniform float uRot; uniform float uYaw; uniform float uPitch; uniform float uFlip;',
     'uniform float uBri; uniform float uCon; uniform float uSat;',
     'uniform float uHorizon; uniform float uWarmth;',
+    'uniform float uFadeWidth; uniform vec3 uFadeColor;',
     'const float PI = 3.14159265359;',
     'void main(){',
     '  vec2 p = gl_FragCoord.xy / uSize * 2.0 - 1.0;',
@@ -39,7 +40,12 @@ window.GLConvert = (function () {
     '  float u = fract(lon / (2.0*PI) + 0.5);',
     '  if (uFlip > 0.5) u = 1.0 - u;',
     '  float v = 0.5 - lat / PI;',
-    '  vec3 c = texture2D(uTex, vec2(u, v)).rgb;',
+    '  vec3 c = texture2D(uTex, vec2(u, clamp(v, 0.0, 1.0))).rgb;',
+    '  if (uFadeWidth > 0.001 && lat < 0.0) {',
+    '    float t = clamp(-lat / uFadeWidth, 0.0, 1.0);',
+    '    t = smoothstep(0.0, 1.0, t);',
+    '    c = mix(c, uFadeColor, t);',
+    '  }',
     '  c += uBri;',
     '  c = (c - 0.5) * (1.0 + uCon) + 0.5;',
     '  float l = dot(c, vec3(0.2126, 0.7152, 0.0722));',
@@ -68,7 +74,7 @@ window.GLConvert = (function () {
     const a = gl.getAttribLocation(prog, 'aPos');
     gl.enableVertexAttribArray(a);
     gl.vertexAttribPointer(a, 2, gl.FLOAT, false, 0, 0);
-    ['uTex', 'uSize', 'uFwd', 'uRight', 'uUp', 'uRot', 'uYaw', 'uPitch', 'uFlip', 'uBri', 'uCon', 'uSat', 'uHorizon', 'uWarmth']
+    ['uTex', 'uSize', 'uFwd', 'uRight', 'uUp', 'uRot', 'uYaw', 'uPitch', 'uFlip', 'uBri', 'uCon', 'uSat', 'uHorizon', 'uWarmth', 'uFadeWidth', 'uFadeColor']
       .forEach(n => loc[n] = gl.getUniformLocation(prog, n));
     maxTex = gl.getParameter(gl.MAX_TEXTURE_SIZE) || 4096;
   }
@@ -80,6 +86,28 @@ window.GLConvert = (function () {
     if (!gl) gl = glCanvas.getContext('webgl', opts) || glCanvas.getContext('experimental-webgl', opts);
     if (!gl) return false;
     setupGL();
+
+    glCanvas.addEventListener('webglcontextlost', e => {
+      e.preventDefault();
+      if (window.MainApp && window.MainApp.addBanner) {
+        window.MainApp.addBanner('error', 'Konteks WebGL hilang. Memulihkan grafis...');
+      }
+    });
+
+    glCanvas.addEventListener('webglcontextrestored', () => {
+      try {
+        setupGL();
+        tex = null;
+        if (window.MainApp && window.MainApp.onGLRestored) {
+          window.MainApp.onGLRestored();
+        }
+      } catch (err) {
+        if (window.MainApp && window.MainApp.addBanner) {
+          window.MainApp.addBanner('error', 'Gagal memulihkan WebGL: ' + err.message);
+        }
+      }
+    });
+
     return true;
   }
 
@@ -95,11 +123,24 @@ window.GLConvert = (function () {
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    const err = gl.getError();
+    if (err !== gl.NO_ERROR) {
+      throw new Error('Gagal mengunggah tekstur ke GPU (WebGL Error ' + err + ').');
+    }
   }
 
   function setSize(n) {
     if (glCanvas.width !== n || glCanvas.height !== n) { glCanvas.width = n; glCanvas.height = n; }
     gl.viewport(0, 0, n, n);
+  }
+
+  function hexToRgb(hex) {
+    if (!hex || typeof hex !== 'string') return [0.5, 0.5, 0.5];
+    const c = hex.replace('#', '');
+    if (c.length === 3) {
+      return [parseInt(c[0] + c[0], 16) / 255, parseInt(c[1] + c[1], 16) / 255, parseInt(c[2] + c[2], 16) / 255];
+    }
+    return [parseInt(c.substring(0, 2), 16) / 255, parseInt(c.substring(2, 4), 16) / 255, parseInt(c.substring(4, 6), 16) / 255];
   }
 
   function drawFace(face, n, state) {
@@ -121,10 +162,11 @@ window.GLConvert = (function () {
     gl.uniform1f(loc.uSat, state.saturation / 100);
     gl.uniform1f(loc.uHorizon, (state.horizon || 0) * PI / 180);
     gl.uniform1f(loc.uWarmth, (state.warmth || 0) / 100);
+    gl.uniform1f(loc.uFadeWidth, ((state.fadeHorizon || 0) * PI / 180));
+    gl.uniform3fv(loc.uFadeColor, hexToRgb(state.fadeColor));
     gl.drawArrays(gl.TRIANGLES, 0, 3);
   }
 
-  // Terapkan watermark pada canvas 2D bila sisi Dn
   function applyWatermark(cctx, faceKey, size, state) {
     if (faceKey === 'Dn' && state.watermarkImg) {
       const wm = state.watermarkImg;
@@ -143,6 +185,6 @@ window.GLConvert = (function () {
   return {
     FACES, glCanvas, initGL, uploadTexture, setSize, drawFace, applyWatermark,
     getMaxTex: () => maxTex,
-    toBlob: () => new Promise((res, rej) => glCanvas.toBlob(b => b ? res(b) : rej(new Error('toBlob gagal')), 'image/png'))
+    toBlob: () => new Promise((res, rej) => glCanvas.toBlob(b => b ? res(b) : rej(new Error('toBlob menghasilkan null')), 'image/png'))
   };
 })();

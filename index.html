@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="id">
 <head>
   <meta charset="utf-8">
@@ -6,14 +6,20 @@
   <title>Roblox Skybox Studio</title>
   <meta name="description" content="Ubah panorama 360° menjadi 6 sisi skybox Roblox, langsung di browser. 100% client-side WebGL.">
   <link rel="stylesheet" href="css/app.css">
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" integrity="sha512-dLxUelApnYxpLt6K2iomGngnHO83iUvZytA3YjDUCjT0HDOHKXnVYdf3hU4JjM8uEhxf9nD1/ey98U3t2vZ0qQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" integrity="sha512-XMVd28F1oH/O71fKEHdDUCZhrMpU29vm493tVSh9SkK3QXNDEnUtLXAHIjMQlWTZ8797eiZeQmhy+z3Z555b7Q==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 </head>
 <body>
 <header>
-  <h1>Roblox Skybox Studio</h1>
-  <p>Panorama 360° menjadi 6 sisi skybox Roblox. Semua diproses di browser kamu; gambar tidak dikirim ke mana pun.</p>
+  <div class="brand">
+    <h1>Roblox Skybox Studio</h1>
+    <p>Panorama 360° menjadi 6 sisi skybox Roblox. 100% diproses di browser kamu.</p>
+  </div>
+  <div class="theme-switch" role="group" aria-label="Pilih tema">
+    <button type="button" id="th-auto" data-theme="auto" aria-pressed="true">Otomatis</button>
+    <button type="button" id="th-dark" data-theme="dark" aria-pressed="false">Gelap</button>
+    <button type="button" id="th-light" data-theme="light" aria-pressed="false">Terang</button>
+  </div>
 </header>
 
 <main class="app">
@@ -29,16 +35,16 @@
   </section>
 
   <section id="sec-preview" class="card" aria-label="Hasil">
-    <div class="tabs" role="tablist">
-      <button role="tab" id="tab-cross" aria-selected="true" type="button">Preview Cross</button>
-      <button role="tab" id="tab-3d" aria-selected="false" type="button">Preview 3D</button>
-      <button role="tab" id="tab-luau" aria-selected="false" type="button">Script Luau</button>
+    <div class="tabs" role="tablist" aria-label="Tampilan preview">
+      <button role="tab" id="tab-cross" aria-selected="true" aria-controls="panel-cross" tabindex="0" type="button">Preview Cross</button>
+      <button role="tab" id="tab-3d" aria-selected="false" aria-controls="panel-3d" tabindex="-1" type="button">Preview 3D</button>
+      <button role="tab" id="tab-luau" aria-selected="false" aria-controls="panel-luau" tabindex="-1" type="button">Script Luau</button>
       <span class="spacer"></span>
       <button id="btnZip" class="primary" type="button" disabled>Unduh ZIP</button>
     </div>
 
     <!-- Panel 1: Cross Net -->
-    <div id="panel-cross" role="tabpanel">
+    <div id="panel-cross" role="tabpanel" aria-labelledby="tab-cross">
       <div class="stage">
         <canvas id="cross" width="1024" height="768" aria-label="Preview 6 sisi skybox dalam susunan cross"></canvas>
         <div id="empty">Unggah panorama atau tekan “Gambar Uji” untuk mulai.</div>
@@ -47,8 +53,8 @@
       <div id="status" role="status" aria-live="polite"></div>
     </div>
 
-    <!-- Panel 2: Preview 3D (Modul B + Dummy Avatar) -->
-    <div id="panel-3d" role="tabpanel" hidden>
+    <!-- Panel 2: Preview 3D -->
+    <div id="panel-3d" role="tabpanel" aria-labelledby="tab-3d" hidden>
       <div class="stage" id="stage3d"></div>
       <div class="row" style="margin-top:8px; align-items:center; gap:14px;">
         <label class="check"><input type="checkbox" id="chkCharacter" checked> Karakter Roblox</label>
@@ -62,13 +68,27 @@
     </div>
 
     <!-- Panel 3: Script Luau -->
-    <div id="panel-luau" role="tabpanel" hidden>
+    <div id="panel-luau" role="tabpanel" aria-labelledby="tab-luau" hidden>
       <p style="margin-top:0">Isi Image ID tiap sisi (angka saja) setelah kamu mengunggahnya ke Roblox.</p>
       <div id="idfields"></div>
       <label class="check"><input type="checkbox" id="celestial"> Tampilkan matahari/bulan (CelestialBodiesShown)</label>
       <pre id="luau" aria-label="Script Luau"></pre>
       <button id="btnCopy" type="button">Salin script</button>
       <span id="copystatus" role="status" style="margin-left:8px;font-size:13px;color:var(--muted)"></span>
+
+      <div class="guide">
+        <h4>Panduan Memasang Skybox ke Roblox</h4>
+        <ol>
+          <li><strong>Unggah Gambar:</strong> Di Roblox Studio, buka <em>View &gt; Asset Manager &gt; Images</em> lalu unggah keenam file PNG hasil unduhan.</li>
+          <li><strong>Gunakan Image ID (Bukan Decal ID):</strong> Klik kanan gambar yang sudah diunggah di Asset Manager &gt; <em>Copy ID</em>. Jika Skybox tampak abu-abu atau putih di game, penyebab nomor satu adalah memakai Decal ID bukan Image ID.</li>
+          <li><strong>Pasang Script:</strong> Buat <code>Script</code> di dalam <code>ServerScriptService</code>, lalu tempel kode di atas.</li>
+          <li><strong>Jika Sisi Up/Down Terputar:</strong> Gunakan tombol rotasi di grup *Koreksi Orientasi* pada panel kiri aplikasi ini, lalu ekspor ulang.</li>
+        </ol>
+        <h4>Peringatan Moderasi & Hak Cipta</h4>
+        <p>Pastikan gambar mematuhi <em>Roblox Community Standards</em> (bebas dari konten ofensif atau hak cipta pihak ketiga). Roblox dapat mengenakan moderasi pada akun yang mengunggah gambar terlarang.</p>
+        <h4>Unggah Cepat Lewat Skrip Lokal</h4>
+        <p>Bagi pengguna teknis dengan Roblox Open Cloud API Key, Anda dapat mengunggah 6 file ZIP secara otomatis memakai skrip pendamping di terminal: <code>node upload-skybox.mjs RobloxSkybox_1024.zip --user-id ID_ANDA</code>.</p>
+      </div>
     </div>
   </section>
 
@@ -92,7 +112,7 @@
       <summary>Watermark Sisi Bawah (Dn)</summary>
       <div class="row" style="margin-top:4px;">
         <input type="file" id="wmFile" accept="image/*" hidden>
-        <button type="button" class="btn" onclick="document.getElementById('wmFile').click()">Pilih Logo</button>
+        <button type="button" class="btn" id="btnWmPick">Pilih Logo</button>
         <button type="button" class="btn" id="btnWmClear">Hapus Logo</button>
       </div>
       <p id="wmName" class="note">Belum ada logo</p>

@@ -1,115 +1,334 @@
-﻿"use strict";
+"use strict";
 (function () {
   const $ = id => document.getElementById(id);
   const GL = window.GLConvert;
+  const V3D = window.Viewer3D;
 
+  const PREFS_KEY = 'skybox.prefs.v1';
+  function loadPrefs() {
+    try {
+      const raw = localStorage.getItem(PREFS_KEY);
+      return raw ? JSON.parse(raw) : {};
+    } catch (_) { return {}; }
+  }
+  function savePrefs() {
+    try {
+      const data = {
+        exportRes: state.exportRes,
+        rotUp: state.rotUp,
+        rotDn: state.rotDn,
+        theme: state.theme,
+        fadeHorizon: state.fadeHorizon,
+        fadeColor: state.fadeColor
+      };
+      localStorage.setItem(PREFS_KEY, JSON.stringify(data));
+    } catch (_) {}
+  }
+
+  const saved = loadPrefs();
   const DEFAULTS = {
-    yaw: 0, pitch: 0, horizon: 0, brightness: 0, contrast: 0, saturation: 100, warmth: 0,
-    rotUp: 0, rotDn: 0, flipH: false,
-    watermarkImg: null, watermarkScale: 25, watermarkOpacity: 50
+    yaw: 0, pitch: 0, horizon: 0, fadeHorizon: saved.fadeHorizon || 0, fadeColor: saved.fadeColor || '#808080',
+    brightness: 0, contrast: 0, saturation: 100, warmth: 0,
+    rotUp: (typeof saved.rotUp === 'number') ? saved.rotUp : 0,
+    rotDn: (typeof saved.rotDn === 'number') ? saved.rotDn : 0,
+    flipH: false,
+    watermarkImg: null, watermarkScale: 25, watermarkOpacity: 50,
+    theme: saved.theme || 'auto'
   };
 
   const state = Object.assign({
-    image: null, exportRes: 1024,
+    image: null, exportRes: saved.exportRes || 1024,
     ids: { Ft: '', Bk: '', Lf: '', Rt: '', Up: '', Dn: '' }
   }, DEFAULTS);
 
   let busy = false;
+  let activeTab = 'cross';
   const PREVIEW = 256;
 
-  function setStatus(text) { $('status').textContent = text || ''; }
-  function addBanner(kind, text) {
-    const el = document.createElement('div'); el.className = 'banner ' + kind;
-    el.innerHTML = `<div class="msg"><div>${text}</div></div><button class="x">×</button>`;
-    el.querySelector('.x').onclick = () => el.remove();
+  // A2 & A4: Buat kanvas offscreen tetap satu kali
+  const crossCanvases = {};
+  const canvases3D = {};
+  GL.FACES.forEach(f => {
+    const c1 = document.createElement('canvas'); c1.width = PREVIEW; c1.height = PREVIEW;
+    crossCanvases[f.k] = c1;
+    const c2 = document.createElement('canvas'); c2.width = 512; c2.height = 512;
+    canvases3D[f.k] = c2;
+  });
+
+  function setStatus(html) { $('status').innerHTML = html || ''; }
+
+  // B9: addBanner tanpa innerHTML
+  function addBanner(kind, text, actions = []) {
+    const el = document.createElement('div');
+    el.className = 'banner ' + kind;
+    const msg = document.createElement('div');
+    msg.className = 'msg';
+    const t = document.createElement('div');
+    t.textContent = text;
+    msg.appendChild(t);
+
+    if (actions && actions.length > 0) {
+      const acts = document.createElement('div');
+      acts.className = 'acts';
+      actions.forEach(a => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.textContent = a.label;
+        btn.addEventListener('click', () => { a.fn(); el.remove(); });
+        acts.appendChild(btn);
+      });
+      msg.appendChild(acts);
+    }
+    el.appendChild(msg);
+
+    const x = document.createElement('button');
+    x.type = 'button'; x.className = 'x'; x.textContent = '×';
+    x.setAttribute('aria-label', 'Tutup peringatan');
+    x.addEventListener('click', () => el.remove());
+    el.appendChild(x);
+
     $('banners').appendChild(el);
   }
   function clearBanners() { $('banners').textContent = ''; }
+
+  // Theme Management (C1)
+  function applyTheme(theme) {
+    state.theme = theme;
+    if (theme === 'auto') {
+      document.documentElement.removeAttribute('data-theme');
+    } else {
+      document.documentElement.setAttribute('data-theme', theme);
+    }
+    ['auto', 'dark', 'light'].forEach(t => {
+      const b = $('th-' + t);
+      if (b) b.setAttribute('aria-pressed', String(t === theme));
+    });
+    savePrefs();
+  }
+  $('th-auto').addEventListener('click', () => applyTheme('auto'));
+  $('th-dark').addEventListener('click', () => applyTheme('dark'));
+  $('th-light').addEventListener('click', () => applyTheme('light'));
+  applyTheme(state.theme);
 
   const cross = $('cross');
   cross.width = PREVIEW * 4; cross.height = PREVIEW * 3;
   const cctx = cross.getContext('2d');
   let rafPending = false;
+  let debounce3dTimer = null;
 
   function requestRender() {
     if (rafPending) return;
     rafPending = true;
     requestAnimationFrame(() => {
       rafPending = false;
-      renderAll();
+      renderCross();
+      if (activeTab === '3d') schedule3DRender();
     });
   }
 
-  function renderAll() {
+  function renderCross() {
     if (!state.image || busy) return;
     GL.setSize(PREVIEW);
     cctx.fillStyle = '#0d0f14'; cctx.fillRect(0, 0, cross.width, cross.height);
 
     GL.FACES.forEach(f => {
       GL.drawFace(f, PREVIEW, state);
-      
-      const c = document.createElement('canvas'); c.width = PREVIEW; c.height = PREVIEW;
+      const c = crossCanvases[f.k];
       const ctx = c.getContext('2d');
       ctx.drawImage(GL.glCanvas, 0, 0);
       GL.applyWatermark(ctx, f.k, PREVIEW, state);
-
       cctx.drawImage(c, f.cell[0] * PREVIEW, f.cell[1] * PREVIEW);
-      window.Viewer3D.updateFaceTexture(f.k, c);
     });
   }
 
+  // A4: Render 3D di 512px (atau min(exportRes, 1024)), debounced 120ms
+  function schedule3DRender() {
+    clearTimeout(debounce3dTimer);
+    debounce3dTimer = setTimeout(() => {
+      render3DTextures();
+    }, 120);
+  }
+
+  function render3DTextures() {
+    if (!state.image || busy || activeTab !== '3d') return;
+    const res3d = Math.max(512, Math.min(state.exportRes, 1024));
+    GL.setSize(res3d);
+
+    GL.FACES.forEach(f => {
+      GL.drawFace(f, res3d, state);
+      const c = canvases3D[f.k];
+      if (c.width !== res3d || c.height !== res3d) { c.width = res3d; c.height = res3d; }
+      const ctx = c.getContext('2d');
+      ctx.drawImage(GL.glCanvas, 0, 0);
+      GL.applyWatermark(ctx, f.k, res3d, state);
+      V3D.updateFaceTexture(f.k, c);
+    });
+  }
+
+  // B1: Deteksi rasio 2:1 & B2: Pengecilan otomatis > maxTex
   function setImage(src, w, h, name, size, opts = {}) {
     if (!opts.keepBanners) clearBanners();
-    state.image = { source: src, width: w, height: h, name, size };
-    try { GL.uploadTexture(src); } catch (e) { addBanner('error', e.message); return; }
-    $('fileinfo').textContent = `${name} · ${w}×${h} px`;
+
+    // B2: Cek ukuran GPU
+    const max = GL.getMaxTex();
+    let effectiveSrc = src;
+    let ew = w, eh = h;
+    if (w > max || h > max) {
+      const scale = max / Math.max(w, h);
+      ew = Math.round(w * scale); eh = Math.round(h * scale);
+      const tempC = document.createElement('canvas'); tempC.width = ew; tempC.height = eh;
+      tempC.getContext('2d').drawImage(src, 0, 0, ew, eh);
+      effectiveSrc = tempC;
+      addBanner('info', `Gambar diperkecil dari ${w}×${h} px ke ${ew}×${eh} px agar muat pada limit GPU.`);
+    }
+
+    // B5: Tes unggah tekstur
+    try {
+      GL.uploadTexture(effectiveSrc);
+    } catch (e) {
+      addBanner('error', 'Gagal memproses tekstur GPU: ' + e.message);
+      return;
+    }
+
+    state.image = { source: effectiveSrc, width: ew, height: eh, origWidth: w, origHeight: h, name, size };
+
+    // Format info
+    let info = `${name} · ${w}×${h} px`;
+    if (ew !== w || eh !== h) info += ` (GPU: ${ew}×${eh} px)`;
+    $('fileinfo').textContent = info;
     $('empty').hidden = true;
     $('btnZip').disabled = false;
     document.querySelectorAll('#facebtns button').forEach(b => b.disabled = false);
+
+    // B1: Banner rasio jika bukan 2:1
+    if (!opts.skipRatioCheck) {
+      const ratio = w / h;
+      if (Math.abs(ratio - 2.0) / 2.0 > 0.05) {
+        addBanner('warn', `Rasio gambar (${w}×${h}) bukan 2:1. Skybox mungkin terlihat terdistorsi.`, [
+          { label: 'Biarkan (diregangkan)', fn: () => {} },
+          {
+            label: 'Crop ke 2:1',
+            fn: () => {
+              const targetW = ratio > 2.0 ? Math.round(h * 2) : w;
+              const targetH = ratio > 2.0 ? h : Math.round(w / 2);
+              const sx = Math.max(0, (w - targetW) / 2);
+              const sy = Math.max(0, (h - targetH) / 2);
+              const c = document.createElement('canvas'); c.width = targetW; c.height = targetH;
+              c.getContext('2d').drawImage(src, sx, sy, targetW, targetH, 0, 0, targetW, targetH);
+              setImage(c, targetW, targetH, name + ' [crop 2:1]', null, { skipRatioCheck: true });
+            }
+          },
+          {
+            label: 'Pad ke 2:1',
+            fn: () => {
+              const targetW = ratio > 2.0 ? w : Math.round(h * 2);
+              const targetH = ratio > 2.0 ? Math.round(w / 2) : h;
+              const dx = (targetW - w) / 2;
+              const dy = (targetH - h) / 2;
+              const c = document.createElement('canvas'); c.width = targetW; c.height = targetH;
+              const ctx = c.getContext('2d');
+              ctx.fillStyle = '#000000'; ctx.fillRect(0, 0, targetW, targetH);
+              ctx.drawImage(src, dx, dy, w, h);
+              setImage(c, targetW, targetH, name + ' [pad 2:1]', null, { skipRatioCheck: true });
+            }
+          }
+        ]);
+      }
+    }
+
     requestRender();
+    if (activeTab === '3d') render3DTextures();
   }
 
+  // B5: Error handling pada pembacaan file
   function loadFile(file) {
-    if (!file || !/^image\//.test(file.type)) return;
+    if (!file) return;
+    if (!/^image\//i.test(file.type)) {
+      addBanner('error', 'Berkas "' + file.name + '" bukan file gambar.');
+      return;
+    }
     const url = URL.createObjectURL(file);
     const img = new Image();
-    img.onload = () => { URL.revokeObjectURL(url); setImage(img, img.naturalWidth, img.naturalHeight, file.name, file.size); };
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      setImage(img, img.naturalWidth, img.naturalHeight, file.name, file.size);
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      addBanner('error', 'Gagal memuat gambar "' + file.name + '". Berkas rusak atau tidak didukung.');
+    };
     img.src = url;
   }
 
-  // Sliders
+  // B3: Paste clipboard Ctrl+V
+  window.addEventListener('paste', e => {
+    if (e.clipboardData && e.clipboardData.items) {
+      for (let i = 0; i < e.clipboardData.items.length; i++) {
+        const item = e.clipboardData.items[i];
+        if (item.type.indexOf('image') !== -1) {
+          const f = item.getAsFile();
+          if (f) loadFile(f);
+          break;
+        }
+      }
+    }
+  });
+
+  // Sliders UI
   const sliders = {};
-  function addSlider(parent, key, label, min, max, step, unit) {
+  function addSlider(parent, key, label, min, max, step, unit, onChangeExtra) {
     const wrap = document.createElement('div'); wrap.className = 'slider';
     const lab = document.createElement('label'); lab.htmlFor = 's_' + key; lab.textContent = label;
     const out = document.createElement('output'); out.htmlFor = 's_' + key;
     const inp = document.createElement('input'); inp.type = 'range'; inp.id = 's_' + key;
     inp.min = min; inp.max = max; inp.step = step; inp.value = state[key];
     const show = () => { out.textContent = state[key] + unit; };
-    inp.addEventListener('input', () => { state[key] = Number(inp.value); show(); requestRender(); });
+    inp.addEventListener('input', () => {
+      state[key] = Number(inp.value);
+      show();
+      if (onChangeExtra) onChangeExtra();
+      requestRender();
+    });
     wrap.appendChild(lab); wrap.appendChild(out); wrap.appendChild(inp);
     parent.appendChild(wrap);
     sliders[key] = { inp, show };
     show();
   }
-  function setSlider(k, v) { state[k] = v; sliders[k].inp.value = v; sliders[k].show(); }
+  function setSlider(k, v) { state[k] = v; if (sliders[k]) { sliders[k].inp.value = v; sliders[k].show(); } }
 
   addSlider($('grpPos'), 'yaw', 'Yaw (horizontal)', 0, 360, 1, '°');
   addSlider($('grpPos'), 'pitch', 'Pitch (vertikal)', -45, 45, 1, '°');
   addSlider($('grpPos'), 'horizon', 'Horizon Level', -30, 30, 1, '°');
+  // C2: Slider Fade Horizon
+  addSlider($('grpPos'), 'fadeHorizon', 'Fade Horizon', 0, 45, 1, '°', savePrefs);
+
+  // C2: Color picker Fade Horizon
+  const fadeColorWrap = document.createElement('div'); fadeColorWrap.className = 'color-picker';
+  const fadeColorLab = document.createElement('label'); fadeColorLab.textContent = 'Warna Fade'; fadeColorLab.htmlFor = 'fadeColor';
+  const fadeColorInp = document.createElement('input'); fadeColorInp.type = 'color'; fadeColorInp.id = 'fadeColor'; fadeColorInp.value = state.fadeColor;
+  fadeColorInp.addEventListener('input', () => { state.fadeColor = fadeColorInp.value; savePrefs(); requestRender(); });
+  fadeColorWrap.appendChild(fadeColorLab); fadeColorWrap.appendChild(fadeColorInp);
+  $('grpPos').appendChild(fadeColorWrap);
 
   addSlider($('grpColor'), 'brightness', 'Brightness', -100, 100, 1, '');
   addSlider($('grpColor'), 'contrast', 'Contrast', -100, 100, 1, '');
   addSlider($('grpColor'), 'saturation', 'Saturation', 0, 200, 1, '%');
   addSlider($('grpColor'), 'warmth', 'Warmth (Suhu)', -100, 100, 1, '');
 
-  // Watermark handlers
+  // Watermark handlers (D: revokeObjectURL & jangan disimpan ke localStorage)
+  $('btnWmPick').addEventListener('click', () => $('wmFile').click());
   $('wmFile').addEventListener('change', e => {
     const f = e.target.files[0];
     if (f) {
+      const url = URL.createObjectURL(f);
       const img = new Image();
-      img.onload = () => { state.watermarkImg = img; $('wmName').textContent = f.name; requestRender(); };
-      img.src = URL.createObjectURL(f);
+      img.onload = () => {
+        URL.revokeObjectURL(url);
+        state.watermarkImg = img;
+        $('wmName').textContent = f.name;
+        requestRender();
+      };
+      img.src = url;
     }
   });
   $('btnWmClear').addEventListener('click', () => {
@@ -123,7 +342,7 @@
       b.setAttribute('aria-pressed', String(Number(b.dataset.v) === getFn())));
     values.forEach(v => {
       const b = document.createElement('button'); b.type = 'button'; b.dataset.v = v; b.textContent = labelFn(v);
-      b.addEventListener('click', () => { setFn(v); refresh(); });
+      b.addEventListener('click', () => { setFn(v); refresh(); savePrefs(); });
       el.appendChild(b);
     });
     refresh();
@@ -137,29 +356,61 @@
 
   document.querySelectorAll('[data-reset]').forEach(b => b.addEventListener('click', () => {
     const g = b.dataset.reset;
-    if (g === 'pos') { setSlider('yaw', 0); setSlider('pitch', 0); setSlider('horizon', 0); }
-    if (g === 'color') { setSlider('brightness', 0); setSlider('contrast', 0); setSlider('saturation', 100); setSlider('warmth', 0); }
-    if (g === 'orient') { state.rotUp = 0; state.rotDn = 0; state.flipH = false; $('flipH').checked = false; refUp(); refDn(); }
+    if (g === 'pos') {
+      setSlider('yaw', 0); setSlider('pitch', 0); setSlider('horizon', 0); setSlider('fadeHorizon', 0);
+      state.fadeColor = '#808080'; fadeColorInp.value = '#808080';
+    }
+    if (g === 'color') {
+      setSlider('brightness', 0); setSlider('contrast', 0); setSlider('saturation', 100); setSlider('warmth', 0);
+    }
+    if (g === 'orient') {
+      state.rotUp = 0; state.rotDn = 0; state.flipH = false; $('flipH').checked = false; refUp(); refDn();
+    }
+    savePrefs();
     requestRender();
   }));
+
+  function setExportButtonsBusy(val) {
+    busy = val;
+    $('btnZip').disabled = val || !state.image;
+    document.querySelectorAll('#facebtns button').forEach(b => b.disabled = val || !state.image);
+  }
 
   GL.FACES.forEach(f => {
     const b = document.createElement('button'); b.type = 'button'; b.disabled = true;
     b.textContent = 'Skybox' + f.k + '.png';
-    b.addEventListener('click', () => window.ZipExport.exportOne(f, state, setStatus));
+    b.addEventListener('click', async () => {
+      setExportButtonsBusy(true);
+      try {
+        await window.ZipExport.exportOne(f, state, setStatus);
+      } catch (e) {
+        addBanner('error', 'Gagal mengekspor ' + f.name + ': ' + e.message + '. Coba pilih resolusi lebih kecil.');
+      } finally {
+        setExportButtonsBusy(false);
+        renderCross();
+      }
+    });
     $('facebtns').appendChild(b);
   });
 
   $('btnZip').addEventListener('click', async () => {
-    busy = true; $('btnZip').disabled = true;
-    try { await window.ZipExport.exportZip(state, setStatus); }
-    catch (e) { addBanner('error', e.message); }
-    finally { busy = false; $('btnZip').disabled = false; renderAll(); }
+    setExportButtonsBusy(true);
+    try {
+      await window.ZipExport.exportZip(state, setStatus);
+    } catch (e) {
+      addBanner('error', 'Gagal membuat ZIP: ' + e.message + '. Coba pilih resolusi 512 atau 1024 px.');
+    } finally {
+      setExportButtonsBusy(false);
+      renderCross();
+    }
   });
 
-  // Upload
+  // B4: Upload keyboard accessibility & drop
   const drop = $('drop'), fileInput = $('file');
   drop.addEventListener('click', () => fileInput.click());
+  drop.addEventListener('keydown', e => {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileInput.click(); }
+  });
   fileInput.addEventListener('change', () => { if (fileInput.files[0]) loadFile(fileInput.files[0]); fileInput.value = ''; });
   ['dragenter', 'dragover'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('over'); }));
   ['dragleave', 'drop'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('over'); }));
@@ -169,33 +420,58 @@
 
   $('btnTest').addEventListener('click', () => {
     const c = window.makeTestPanorama();
-    setImage(c, c.width, c.height, 'Gambar Uji', null);
+    setImage(c, c.width, c.height, 'Gambar Uji', null, { skipRatioCheck: true });
   });
 
-  // Tabs
+  // Tabs & Aksesibilitas Panah Kiri/Kanan (C5)
+  const tabNames = ['cross', '3d', 'luau'];
   function switchTab(name) {
-    ['cross', '3d', 'luau'].forEach(t => {
+    activeTab = name;
+    tabNames.forEach(t => {
       const isSel = t === name;
-      $(`tab-${t}`).setAttribute('aria-selected', String(isSel));
-      $(`panel-${t}`).hidden = !isSel;
+      const tabEl = $(`tab-${t}`);
+      const panelEl = $(`panel-${t}`);
+      tabEl.setAttribute('aria-selected', String(isSel));
+      tabEl.tabIndex = isSel ? 0 : -1;
+      panelEl.hidden = !isSel;
     });
+
     if (name === '3d') {
-      window.Viewer3D.init($('stage3d'));
-      window.Viewer3D.onResize();
-      renderAll();
+      V3D.init($('stage3d'));
+      V3D.setVisible(true);
+      render3DTextures();
+    } else {
+      V3D.setVisible(false);
     }
     if (name === 'cross') requestRender();
   }
-  $('tab-cross').onclick = () => switchTab('cross');
-  $('tab-3d').onclick = () => switchTab('3d');
-  $('tab-luau').onclick = () => switchTab('luau');
 
-  $('chkBaseplate').addEventListener('change', e => window.Viewer3D.setBaseplate(e.target.checked));
-  $('chkCharacter').addEventListener('change', e => window.Viewer3D.setCharacter(e.target.checked));
-  $('chkWireframe').addEventListener('change', e => window.Viewer3D.setWireframe(e.target.checked));
+  tabNames.forEach((t, idx) => {
+    const tabEl = $(`tab-${t}`);
+    tabEl.addEventListener('click', () => switchTab(t));
+    tabEl.addEventListener('keydown', e => {
+      let targetIdx = -1;
+      if (e.key === 'ArrowRight' || e.key === 'ArrowDown') targetIdx = (idx + 1) % tabNames.length;
+      else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') targetIdx = (idx - 1 + tabNames.length) % tabNames.length;
+      if (targetIdx !== -1) {
+        e.preventDefault();
+        const nextName = tabNames[targetIdx];
+        $(`tab-${nextName}`).focus();
+        switchTab(nextName);
+      }
+    });
+  });
+
+  $('chkBaseplate').addEventListener('change', e => V3D.setBaseplate(e.target.checked));
+  $('chkCharacter').addEventListener('change', e => V3D.setCharacter(e.target.checked));
+  $('chkWireframe').addEventListener('change', e => V3D.setWireframe(e.target.checked));
   $('s_fov').addEventListener('input', e => {
-    window.Viewer3D.setFov(Number(e.target.value));
+    V3D.setFov(Number(e.target.value));
     $('out_fov').textContent = e.target.value;
+  });
+  V3D.onFovChange(fov => {
+    $('s_fov').value = Math.round(fov);
+    $('out_fov').textContent = Math.round(fov);
   });
 
   function refreshLuau() {
@@ -210,14 +486,39 @@
     row.appendChild(lab); row.appendChild(inp); $('idfields').appendChild(row);
   });
   $('celestial').addEventListener('change', refreshLuau);
+
+  // B8: Copy script dengan try/catch & fallback
   $('btnCopy').addEventListener('click', async () => {
-    await navigator.clipboard.writeText($('luau').textContent);
-    $('copystatus').textContent = 'Tersalin.';
+    try {
+      await navigator.clipboard.writeText($('luau').textContent);
+      $('copystatus').textContent = 'Tersalin!';
+    } catch (_) {
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      const r = document.createRange();
+      r.selectNodeContents($('luau'));
+      sel.addRange(r);
+      $('copystatus').textContent = 'Clipboard ditolak. Teks dipilih, tekan Ctrl+C.';
+    }
+    setTimeout(() => { $('copystatus').textContent = ''; }, 4000);
   });
   refreshLuau();
 
+  // B6: Registrasi callback global untuk GL context restore
+  window.MainApp = {
+    addBanner,
+    onGLRestored: () => {
+      if (state.image) {
+        GL.uploadTexture(state.image.source);
+        requestRender();
+        if (activeTab === '3d') render3DTextures();
+      }
+    }
+  };
+
   if (!GL.initGL()) {
-    addBanner('error', 'WebGL tidak didukung browser ini.');
+    addBanner('error', 'WebGL tidak didukung atau dimatikan pada browser ini. Aplikasi tidak dapat berjalan.');
     $('btnTest').disabled = true;
+    $('drop').style.opacity = '0.5';
   }
 })();
