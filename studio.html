@@ -177,16 +177,21 @@
           <option value="cermin" selected>Cermin lembut — warna sisi mengikuti gambar (rekomendasi)</option>
           <option value="halus">Warna halus — klasik, lebih polos</option>
         </select>
-        <div id="grpPanoCtl" hidden>
-          <div class="slider">
-            <label for="s_polesmooth">Rapikan atas &amp; bawah (kutub)</label>
-            <output id="out_polesmooth">30%</output>
-            <input type="range" id="s_polesmooth" min="0" max="100" value="30">
-          </div>
-          <p class="note" style="margin-top:2px">Menghaluskan titik paling atas &amp; bawah panorama — pada gambar AI, bagian ini sering berpusar saat dipasang di kutub langit.</p>
-        </div>
         <div id="grpFlatSliders"></div>
         <p class="note" id="flatNote">Gambar ditempatkan di depan kamera tanpa melar, sisanya diisi otomatis dari warna gambar dan menyambung 360°.</p>
+      </div>
+      <div id="grpPanoCtl" hidden>
+        <div class="slider">
+          <label for="s_polesmooth">Rapikan atas &amp; bawah (kutub)</label>
+          <output id="out_polesmooth">30%</output>
+          <input type="range" id="s_polesmooth" min="0" max="100" value="30">
+        </div>
+        <div class="slider">
+          <label for="s_voff">Tinggi Horizon</label>
+          <output id="out_voff">0°</output>
+          <input type="range" id="s_voff" min="-45" max="45" value="0">
+        </div>
+        <p class="note" style="margin-top:2px">Rapikan kutub: menghaluskan pusaran di titik atas/bawah (sering terjadi pada gambar AI). Tinggi Horizon: geser gambar naik/turun agar lautan awan pas di garis horizon.</p>
       </div>
     </details>
     <details class="group" open>

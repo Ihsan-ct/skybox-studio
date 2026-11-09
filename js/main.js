@@ -302,7 +302,7 @@
 
 
   // ---------- Gambar 2D biasa -> panorama 360° otomatis ----------
-  const flat = { src: null, w: 0, h: 0, name: '', size: null, mode: '2d', kind: 'scene', fov: 100, offset: 0, edge: 18, fill: 'cermin', smooth: 30 };
+  const flat = { src: null, w: 0, h: 0, name: '', size: null, mode: '2d', kind: 'scene', fov: 100, offset: 0, edge: 18, fill: 'cermin', smooth: 30, vOff: 0 };
   let flatTimer = null, flatToken = 0;
 
   function flatPitch() {
@@ -319,6 +319,7 @@
   function applyFlat() {
     if (!flat.src) return;
     if (flat.mode === 'pano') {
+      state.vOff = flat.vOff;
       let src = flat.src, w = flat.w, h = flat.h;
       if (flat.smooth > 0 && window.Flat2Pano.smoothPoles) {
         const c = document.createElement('canvas'); c.width = w; c.height = h;
@@ -386,7 +387,7 @@
 
   const refreshMode = makeFlatSeg($('segMode'),
     [{ label: 'Gambar 2D biasa', v: '2d' }, { label: 'Panorama 360°', v: 'pano' }],
-    () => flat.mode, v => { flat.mode = v; $('flatCtl').hidden = v !== '2d'; applyFlat(); });
+    () => flat.mode, v => { flat.mode = v; $('flatCtl').hidden = v !== '2d'; state.vOff = 0; applyFlat(); });
   const refreshKind = makeFlatSeg($('segKind'),
     [{ label: 'Pemandangan', v: 'scene' }, { label: 'Langit (di atas horizon)', v: 'sky' }],
     () => flat.kind, v => { flat.kind = v; scheduleFlat(); });
@@ -419,6 +420,12 @@
     flat.smooth = Number(e.target.value);
     $('out_polesmooth').textContent = flat.smooth + '%';
     if (flat.mode === 'pano') scheduleFlat();
+  });
+  $('s_voff').addEventListener('input', e => {
+    flat.vOff = Number(e.target.value);
+    $('out_voff').textContent = flat.vOff + '°';
+    state.vOff = flat.vOff;
+    requestRender();
   });
 
   window.addEventListener('paste', e => {

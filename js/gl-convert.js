@@ -51,6 +51,7 @@ window.GLConvert = (function () {
     'uniform float uFadeWidth; uniform vec3 uFadeColor; uniform float uSeam;',
     'uniform float uFadeTop; uniform vec3 uFadeTopColor;',
     'uniform float uMirror; uniform float uHue; uniform float uTint;',
+    'uniform float uVOff;',
     'const float PI = 3.14159265359;',
     'vec3 shade(vec2 fc){',
     '  vec2 p = fc / uSize * 2.0 - 1.0;',
@@ -64,7 +65,7 @@ window.GLConvert = (function () {
     '  float lat = lat0 - uHorizon * cos(lat0);',
     '  float u = fract(lon / (2.0*PI) + 0.5);',
     '  if (uFlip > 0.5) u = 1.0 - u;',
-    '  float v = 0.5 - lat / PI;',
+    '  float v = 0.5 - lat / PI + uVOff;',
     '  if (uMirror > 0.5) v = 1.0 - v;',
     '  float vv = clamp(v, 0.0, 1.0);',
     '  vec3 c = texture2D(uTex, vec2(u, vv)).rgb;',
@@ -119,7 +120,7 @@ window.GLConvert = (function () {
     const a = gl.getAttribLocation(prog, 'aPos');
     gl.enableVertexAttribArray(a);
     gl.vertexAttribPointer(a, 2, gl.FLOAT, false, 0, 0);
-    ['uTex', 'uSize', 'uFwd', 'uRight', 'uUp', 'uRot', 'uYaw', 'uPitch', 'uFlip', 'uBri', 'uCon', 'uSat', 'uHorizon', 'uWarmth', 'uFadeWidth', 'uFadeColor', 'uSeam', 'uFadeTop', 'uFadeTopColor', 'uMirror', 'uHue', 'uTint']
+    ['uTex', 'uSize', 'uFwd', 'uRight', 'uUp', 'uRot', 'uYaw', 'uPitch', 'uFlip', 'uBri', 'uCon', 'uSat', 'uHorizon', 'uWarmth', 'uFadeWidth', 'uFadeColor', 'uSeam', 'uFadeTop', 'uFadeTopColor', 'uMirror', 'uHue', 'uTint', 'uVOff']
       .forEach(n => loc[n] = gl.getUniformLocation(prog, n));
     maxTex = gl.getParameter(gl.MAX_TEXTURE_SIZE) || 4096;
   }
@@ -218,6 +219,7 @@ window.GLConvert = (function () {
     gl.uniform1f(loc.uMirror, (face.k === 'Dn' && state.mirrorDn) ? 1 : 0);
     gl.uniform1f(loc.uHue, state.hue || 0);
     gl.uniform1f(loc.uTint, (state.tint || 0) / 100);
+    gl.uniform1f(loc.uVOff, (state.vOff || 0) / 180);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
   }
 
