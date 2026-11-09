@@ -57,6 +57,7 @@
       <button role="tab" id="tab-alat" aria-selected="false" aria-controls="panel-alat" tabindex="-1" type="button">Alat</button>
       <button role="tab" id="tab-prompt" aria-selected="false" aria-controls="panel-prompt" tabindex="-1" type="button">AI Prompt</button>
       <span class="spacer"></span>
+      <button id="btnCrossPng" type="button" disabled>Unduh Cross</button>
       <button id="btnZip" class="primary" type="button" disabled>Unduh ZIP</button>
     </div>
 
@@ -73,6 +74,9 @@
           <button id="smpSiang" type="button">☀️ Coba: Siang Cerah</button>
           <button id="smpSenja" type="button">🌇 Coba: Senja</button>
           <button id="smpMalam" type="button">🌙 Coba: Malam Berbintang</button>
+          <button id="smpAurora" type="button">🌌 Coba: Aurora</button>
+          <button id="smpNebula" type="button">🌠 Coba: Nebula</button>
+          <button id="smpHoror" type="button">🕸️ Coba: Kabut Horor</button>
         </div>
       </div>
       <div class="stage" id="stage3d"></div>
@@ -109,9 +113,18 @@
         <div class="row" style="gap:8px;margin-bottom:8px">
           <button id="btnRbxmx" type="button" class="primary">Unduh file Sky (.rbxmx)</button>
           <button id="btnView3d" type="button">Lihat di Preview 3D</button>
+          <button id="btnCopyIds" type="button">Salin 6 ID</button>
           <span style="font-size:13px;color:var(--muted);align-self:center">Studio: klik kanan <code>Lighting</code> &gt; <em>Insert From File</em>, pilih file ini.</span>
         </div>
         <label class="check"><input type="checkbox" id="celestial"> Tampilkan matahari/bulan (CelestialBodiesShown)</label>
+        <label class="check"><input type="checkbox" id="withAtm"> Sertakan Atmosphere (kabut udara — ubah suasana langit)</label>
+        <div class="row" id="atmPresetRow" hidden>
+          <select id="atmPreset" aria-label="Preset Atmosphere" style="min-height:40px;border-radius:8px;border:1px solid var(--line);background:var(--panel2);color:var(--text);font:inherit;flex:0 1 240px">
+            <option value="tipis">Atmosphere: Tipis (semu)</option>
+            <option value="normal" selected>Atmosphere: Normal (film look)</option>
+            <option value="tebal">Atmosphere: Tebal (horor / dramatis)</option>
+          </select>
+        </div>
         <pre id="luau" aria-label="Script Luau"></pre>
         <button id="btnCopy" type="button">Salin script Command Bar</button>
         <span id="copystatus" role="status" style="margin-left:8px;font-size:13px;color:var(--muted)"></span>
@@ -188,6 +201,13 @@
       <label class="check"><input type="checkbox" id="flipH"> Flip horizontal (mirror)</label>
       <label class="check"><input type="checkbox" id="mirrorDn"> Sisi bawah cermin langit (map melayang)</label>
       <button class="reset" type="button" data-reset="orient">Reset orientasi</button>
+
+      <div class="seglabel" style="margin-top:14px">Konfigurasi (bagikan / simpan)</div>
+      <div class="row">
+        <button type="button" id="btnCfgExport" style="min-height:38px;font-size:13px">Ekspor pengaturan (.json)</button>
+        <button type="button" id="btnCfgImport" style="min-height:38px;font-size:13px">Impor pengaturan</button>
+        <input type="file" id="cfgFile" accept="application/json,.json" hidden>
+      </div>
     </details>
   </section>
 </main>

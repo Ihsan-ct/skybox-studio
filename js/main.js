@@ -48,6 +48,7 @@
     flipH: false,
     watermarkImg: null, watermarkScale: 25, watermarkOpacity: 50,
     wmSides: ['dn'], wmAnchor: 'tengah', wmDx: 0, wmDy: 0, wmRot: 0,
+    hue: 0, tint: 0,
     mirrorDn: false,
     theme: saved.theme || 'auto'
   };
@@ -234,6 +235,7 @@
     $('empty').hidden = true;
     const pk = document.getElementById('panel-konversi'); if (pk) pk.classList.remove('no-img');
     $('btnZip').disabled = false;
+    $('btnCrossPng').disabled = false;
     document.querySelectorAll('#facebtns button').forEach(b => b.disabled = false);
 
     if (!opts.skipRatioCheck) {
@@ -493,6 +495,8 @@
   addSlider($('grpColor'), 'contrast', 'Contrast', -100, 100, 1, '');
   addSlider($('grpColor'), 'saturation', 'Saturation', 0, 200, 1, '%');
   addSlider($('grpColor'), 'warmth', 'Warmth (Suhu)', -100, 100, 1, '');
+  addSlider($('grpColor'), 'hue', 'Hue Rotate', -180, 180, 1, '°');
+  addSlider($('grpColor'), 'tint', 'Tint (Hijau ↔ Magenta)', -100, 100, 1, '');
 
   $('btnWmPick').addEventListener('click', () => $('wmFile').click());
   $('wmFile').addEventListener('change', e => {
@@ -597,6 +601,7 @@
     }
     if (g === 'color') {
       setSlider('brightness', 0); setSlider('contrast', 0); setSlider('saturation', 100); setSlider('warmth', 0);
+      setSlider('hue', 0); setSlider('tint', 0);
     }
     if (g === 'orient') {
       state.rotUp = 0; state.rotDn = 0; state.flipH = false; state.mirrorDn = false;
@@ -609,6 +614,7 @@
   function setExportButtonsBusy(val) {
     busy = val;
     $('btnZip').disabled = val || !state.image;
+    $('btnCrossPng').disabled = val || !state.image;
     document.querySelectorAll('#facebtns button').forEach(b => b.disabled = val || !state.image);
   }
 
@@ -628,6 +634,18 @@
       }
     });
     $('facebtns').appendChild(b);
+  });
+
+  $('btnCrossPng').addEventListener('click', async () => {
+    setExportButtonsBusy(true);
+    try {
+      await window.ZipExport.exportCross(state, setStatus);
+    } catch (e) {
+      addBanner('error', 'Gagal membuat atlas cross: ' + e.message);
+    } finally {
+      setExportButtonsBusy(false);
+      if (showCross) renderCross();
+    }
   });
 
   $('btnZip').addEventListener('click', async () => {
@@ -746,7 +764,7 @@
   // Script muncul otomatis di tab Upload Roblox begitu ke-6 Image ID terisi (dari upload atau input manual).
   let luauShown = false;
   function refreshLuau() {
-    $('luau').textContent = window.LuauGen.buildLuau(state.ids, $('celestial').checked);
+    $('luau').textContent = window.LuauGen.buildLuau(state.ids, $('celestial').checked, atmOpts());
     const all = GL.FACES.every(f => /^\d+$/.test(String(state.ids[f.k] || '').trim()));
     $('rbxResult').hidden = !all;
     $('decalWarn').hidden = !(all && state.uploadType === 'Decal');
@@ -770,6 +788,9 @@
     row.appendChild(lab); row.appendChild(inp); $('idfields').appendChild(row);
   });
   $('celestial').addEventListener('change', refreshLuau);
+  $('withAtm').addEventListener('change', () => { $('atmPresetRow').hidden = !$('withAtm').checked; refreshLuau(); });
+  $('atmPreset').addEventListener('change', refreshLuau);
+  const atmOpts = () => ({ atmosphere: $('withAtm').checked ? $('atmPreset').value : 'none' });
 
   $('btnView3d').addEventListener('click', () => {
     switchTab('konversi');
@@ -779,7 +800,7 @@
 
   // Langit contoh prosedural untuk empty state — kartu visual dengan thumbnail.
   if (window.SampleSkies) {
-    const smpLabel = { siang: 'Siang Cerah', senja: 'Senja', malam: 'Malam Berbintang' };
+    const smpLabel = { siang: 'Siang Cerah', senja: 'Senja', malam: 'Malam Berbintang', aurora: 'Aurora', nebula: 'Nebula', horor: 'Kabut Horor' };
     window.SampleSkies.kinds.forEach(kind => {
       const b = $('smp' + kind.charAt(0).toUpperCase() + kind.slice(1));
       if (!b) return;
@@ -924,12 +945,29 @@
   }
 
   $('btnRbxmx').addEventListener('click', () => {
-    const xml = window.LuauGen.buildRbxmx(state.ids, $('celestial').checked);
+    const xml = window.LuauGen.buildRbxmx(state.ids, $('celestial').checked, atmOpts());
     const a = document.createElement('a');
     const url = URL.createObjectURL(new Blob([xml], { type: 'application/xml' }));
     a.href = url; a.download = 'Sky.rbxmx';
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 2000);
+  });
+
+  $('btnCopyIds').addEventListener('click', async () => {
+    const NL = String.fromCharCode(10);
+    const lines = window.GLConvert.FACES.map(f => {
+      const v = String(state.ids[f.k] || '').replace(/[^0-9]/g, '');
+      return 'Skybox' + f.k + ' = ' + (v || '(belum ada)');
+    }).join(NL);
+    const txt = '=== Image ID Skybox (NAKA Studio) ===' + NL + lines + NL;
+    try {
+      await navigator.clipboard.writeText(txt);
+      $('copystatus').textContent = '6 ID tersalin!';
+    } catch (_) {
+      $('copystatus').textContent = 'Clipboard ditolak — salin manual dari console.';
+      console.log(txt);
+    }
+    setTimeout(() => { $('copystatus').textContent = ''; }, 4000);
   });
 
   $('btnCopy').addEventListener('click', async () => {
@@ -947,6 +985,66 @@
     setTimeout(() => { $('copystatus').textContent = ''; }, 4000);
   });
   refreshLuau();
+
+  // Nudge keyboard: panah menggeser yaw/pitch (Shift = 5°). Abaikan saat fokus di input.
+  document.addEventListener('keydown', e => {
+    const t = e.target;
+    if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable)) return;
+    if (!state.image) return;
+    const step = e.shiftKey ? 5 : 1;
+    let handled = false;
+    if (e.key === 'ArrowLeft') { state.yaw = (state.yaw - step + 360) % 360; handled = true; }
+    else if (e.key === 'ArrowRight') { state.yaw = (state.yaw + step) % 360; handled = true; }
+    else if (e.key === 'ArrowUp') { state.pitch = Math.max(-45, state.pitch - step); handled = true; }
+    else if (e.key === 'ArrowDown') { state.pitch = Math.min(45, state.pitch + step); handled = true; }
+    if (handled) {
+      e.preventDefault();
+      if (sliders.yaw) { sliders.yaw.inp.value = state.yaw; sliders.yaw.show(); }
+      if (sliders.pitch) { sliders.pitch.inp.value = state.pitch; sliders.pitch.show(); }
+      requestRender();
+    }
+  });
+
+  // ── Ekspor / Impor konfigurasi (JSON) — pengaturan bisa disimpan & dibagikan ──
+  const CFG_KEYS = ['yaw', 'pitch', 'horizon', 'fadeHorizon', 'fadeColor', 'brightness', 'contrast',
+    'saturation', 'warmth', 'hue', 'tint', 'seamBlend', 'fadeTop', 'fadeTopColor',
+    'rotUp', 'rotDn', 'flipH', 'mirrorDn', 'wmSides', 'wmAnchor', 'wmDx', 'wmDy', 'wmRot',
+    'watermarkScale', 'watermarkOpacity', 'exportRes'];
+  $('btnCfgExport').addEventListener('click', () => {
+    const cfg = { _app: 'naka-studio-config', _v: 1, image: state.image ? state.image.name : null };
+    CFG_KEYS.forEach(k => { cfg[k] = state[k]; });
+    const url = URL.createObjectURL(new Blob([JSON.stringify(cfg, null, 2)], { type: 'application/json' }));
+    const a = document.createElement('a');
+    a.href = url; a.download = 'naka-sky-config.json';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+  });
+  function applyConfig(cfg) {
+    if (!cfg || cfg._app !== 'naka-studio-config') throw new Error('File bukan konfigurasi NAKA Studio.');
+    CFG_KEYS.forEach(k => { if (k in cfg) state[k] = cfg[k]; });
+    CFG_KEYS.forEach(k => { if (sliders[k]) { sliders[k].inp.value = state[k]; sliders[k].show(); } });
+    $('fadeColor').value = state.fadeColor;
+    $('fadeTopColor').value = state.fadeTopColor;
+    $('flipH').checked = !!state.flipH;
+    $('mirrorDn').checked = !!state.mirrorDn;
+    refUp(); refDn();
+    savePrefs();
+    requestRender();
+    if (activeTab === 'konversi' && !showCross) render3DTextures();
+    addBanner('info', 'Konfigurasi diterapkan' + (cfg.image ? ' (asal: ' + cfg.image + ')' : '') + '.');
+  }
+  $('btnCfgImport').addEventListener('click', () => $('cfgFile').click());
+  $('cfgFile').addEventListener('change', () => {
+    const f = $('cfgFile').files[0];
+    $('cfgFile').value = '';
+    if (!f) return;
+    const rd = new FileReader();
+    rd.onload = () => {
+      try { applyConfig(JSON.parse(String(rd.result))); }
+      catch (e) { addBanner('error', 'Gagal impor konfigurasi: ' + e.message); }
+    };
+    rd.readAsText(f);
+  });
 
   // Penanganan WebGL Context Lost & Restored
   let glLostBanner = null;

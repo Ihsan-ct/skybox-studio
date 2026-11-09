@@ -50,7 +50,7 @@ window.GLConvert = (function () {
     'uniform float uHorizon; uniform float uWarmth;',
     'uniform float uFadeWidth; uniform vec3 uFadeColor; uniform float uSeam;',
     'uniform float uFadeTop; uniform vec3 uFadeTopColor;',
-    'uniform float uMirror;',
+    'uniform float uMirror; uniform float uHue; uniform float uTint;',
     'const float PI = 3.14159265359;',
     'vec3 shade(vec2 fc){',
     '  vec2 p = fc / uSize * 2.0 - 1.0;',
@@ -83,6 +83,11 @@ window.GLConvert = (function () {
     '  float l = dot(c, vec3(0.2126, 0.7152, 0.0722));',
     '  c = mix(vec3(l), c, uSat);',
     '  c *= vec3(1.0 + uWarmth * 0.15, 1.0 + uWarmth * 0.03, 1.0 - uWarmth * 0.15);',
+    '  float ang = uHue * ' + '3.14159265 / 180.0;',
+    '  vec3 k1 = vec3(0.57735, 0.57735, 0.57735);',
+    '  float ca = cos(ang);',
+    '  c = c * ca + cross(k1, c) * sin(ang) + k1 * dot(k1, c) * (1.0 - ca);',
+    '  c += vec3(uTint * 0.10, -uTint * 0.06, uTint * 0.10);',
     '  return clamp(c, 0.0, 1.0);',
     '}',
     'float hash(vec2 q){ return fract(sin(dot(q, vec2(12.9898, 78.233))) * 43758.5453); }',
@@ -114,7 +119,7 @@ window.GLConvert = (function () {
     const a = gl.getAttribLocation(prog, 'aPos');
     gl.enableVertexAttribArray(a);
     gl.vertexAttribPointer(a, 2, gl.FLOAT, false, 0, 0);
-    ['uTex', 'uSize', 'uFwd', 'uRight', 'uUp', 'uRot', 'uYaw', 'uPitch', 'uFlip', 'uBri', 'uCon', 'uSat', 'uHorizon', 'uWarmth', 'uFadeWidth', 'uFadeColor', 'uSeam', 'uFadeTop', 'uFadeTopColor', 'uMirror']
+    ['uTex', 'uSize', 'uFwd', 'uRight', 'uUp', 'uRot', 'uYaw', 'uPitch', 'uFlip', 'uBri', 'uCon', 'uSat', 'uHorizon', 'uWarmth', 'uFadeWidth', 'uFadeColor', 'uSeam', 'uFadeTop', 'uFadeTopColor', 'uMirror', 'uHue', 'uTint']
       .forEach(n => loc[n] = gl.getUniformLocation(prog, n));
     maxTex = gl.getParameter(gl.MAX_TEXTURE_SIZE) || 4096;
   }
@@ -211,6 +216,8 @@ window.GLConvert = (function () {
     gl.uniform1f(loc.uSeam, (state.seamBlend || 0) / 100);
     // "Cermin langit": sisi bawah mencerminkan langit atas — cocok untuk map melayang.
     gl.uniform1f(loc.uMirror, (face.k === 'Dn' && state.mirrorDn) ? 1 : 0);
+    gl.uniform1f(loc.uHue, state.hue || 0);
+    gl.uniform1f(loc.uTint, (state.tint || 0) / 100);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
   }
 

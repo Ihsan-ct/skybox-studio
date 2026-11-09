@@ -63,5 +63,36 @@ window.ZipExport = (function () {
     });
   }
 
-  return { exportOne, exportZip };
+  // Ekspor atlas cross 4x3 ( keenam sisi dalam satu gambar ) — praktis untuk
+  // inspeksi manual atau dipakai alat lain yang menerima layout cross.
+  async function exportCross(state, setStatus) {
+    const GL = window.GLConvert;
+    const cell = Math.max(256, Math.floor(state.exportRes / 2));
+    setStatus({ text: 'Menyusun atlas cross (' + (cell * 4) + 'x' + (cell * 3) + ' px)…' }); await tick();
+    const canvas = document.createElement('canvas');
+    canvas.width = cell * 4; canvas.height = cell * 3;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#0d0f14'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+    for (const f of GL.FACES) {
+      GL.setSize(cell);
+      GL.drawFace(f, cell, state);
+      const c = document.createElement('canvas'); c.width = c.height = cell;
+      const cctx = c.getContext('2d');
+      cctx.drawImage(GL.glCanvas, 0, 0);
+      GL.applyWatermark(cctx, f.k, cell, state);
+      ctx.drawImage(c, f.cell[0] * cell, f.cell[1] * cell);
+      await tick();
+    }
+    const blob = await canvasToBlob(canvas);
+    const fileName = 'SkyboxCross_' + cell * 4 + 'x' + cell * 3 + '.png';
+    const blobUrl = downloadBlob(blob, fileName);
+    setStatus({
+      text: 'Ekspor atlas cross selesai! Jika tidak otomatis mengunduh,',
+      linkUrl: blobUrl,
+      linkLabel: 'klik di sini untuk mengunduh manual.',
+      download: fileName
+    });
+  }
+
+  return { exportOne, exportZip, exportCross };
 })();

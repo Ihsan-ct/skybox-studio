@@ -1,6 +1,6 @@
 {
   "name": "roblox-skybox-studio",
-  "version": "1.3.0",
+  "version": "1.3.3",
   "description": "Konversi panorama 360° menjadi 6 sisi skybox Roblox, 100% client-side WebGL. Termasuk skrip pendamping untuk upload otomatis ke Roblox Open Cloud.",
   "private": true,
   "type": "module",

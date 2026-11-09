@@ -130,7 +130,7 @@ window.RobloxUpload = (function () {
       if (!r.ok) throw new Error(j.error || ('HTTP ' + r.status));
       if (j.done) {
         if (j.error) throw new Error('Ditolak Roblox: ' + j.error);
-        if (j.assetId) return j.assetId;
+        if (j.assetId) return { assetId: String(j.assetId), moderation: j.moderation || null };
         throw new Error('Operasi selesai tanpa assetId.');
       }
     }
@@ -195,14 +195,21 @@ window.RobloxUpload = (function () {
             pending[k] = path;
           }
           setRowStatus(k, 'Diproses Roblox…', false);
-          let assetId;
-          try { assetId = oauth ? await oauthPoll(path) : await pollOperation(apiKey, path); }
-          catch (e) { if (/Ditolak Roblox/.test(e.message)) delete pending[k]; throw e; }   // ditolak: render ulang saat dicoba lagi
+          let assetId, moderation = null;
+          try {
+            if (oauth) {
+              const r = await oauthPoll(path);
+              assetId = r.assetId; moderation = r.moderation;
+            } else {
+              assetId = await pollOperation(apiKey, path);
+            }
+          } catch (e) { if (/Ditolak Roblox/.test(e.message)) delete pending[k]; throw e; }   // ditolak: render ulang saat dicoba lagi
           done[k] = assetId; delete pending[k];
           if (!saved && autoSave) { saved = true; try { await autoSave(); } catch (e) {} }
-          setRowStatus(k, 'ID ' + assetId, true);
+          const modPending = moderation && !/APPROVED/i.test(moderation);
+          setRowStatus(k, 'ID ' + assetId + (modPending ? ' (moderasi…)' : ''), true);
           setRetry(k, false);
-          log('Skybox' + k + ' -> ' + assetId);
+          log('Skybox' + k + ' -> ' + assetId + (modPending ? ' — masih dicek moderasi Roblox, langit muncul setelah lolos.' : ''));
           state.ids[k] = assetId;
           const inp = document.getElementById('id_' + k);
           if (inp) inp.value = assetId;
