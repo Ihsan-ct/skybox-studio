@@ -204,7 +204,8 @@
       const scale = max / Math.max(w, h);
       ew = Math.round(w * scale); eh = Math.round(h * scale);
       const tempC = document.createElement('canvas'); tempC.width = ew; tempC.height = eh;
-      tempC.getContext('2d').drawImage(src, 0, 0, ew, eh);
+      const tctx = tempC.getContext('2d'); tctx.imageSmoothingEnabled = true; tctx.imageSmoothingQuality = 'high';
+      tctx.drawImage(src, 0, 0, ew, eh);
       effectiveSrc = tempC;
       addBanner('info', `Gambar diperkecil dari ${w}×${h} px ke ${ew}×${eh} px agar muat pada limit GPU.`);
     }
