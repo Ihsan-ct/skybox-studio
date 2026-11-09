@@ -2,9 +2,11 @@
 // Stitcher: 6 sisi skybox -> 1 panorama equirectangular (kebalikan dari gl-convert.js)
 window.Stitcher = (function () {
   const FACES = window.GLConvert.FACES;
+  // Nama arah (left.png dsb.) dipetakan ke sisi kubus internal; nama properti Roblox
+  // (SkyboxRt.png dsb.) berisi arah yang tertukar: SkyboxRt = render sisi kiri (Lf), dst.
   const KEYMAP = { ft: 'Ft', front: 'Ft', bk: 'Bk', back: 'Bk', lf: 'Lf', left: 'Lf', rt: 'Rt', right: 'Rt', up: 'Up', top: 'Up', dn: 'Dn', down: 'Dn', bottom: 'Dn' };
   const slots = {};          // k -> { img, w, h, name }
-  const rot = { Up: 0, Dn: 0 };
+  const rot = { Up: 270, Dn: 90 };  // Default membalik putaran ekspor Roblox (Up disimpan CCW 90°, Dn CW 90°).
   let outCanvas = null, busy = false;
   let statusEl, outEl, btnRun, btnDl, btnSend;
 
@@ -14,7 +16,11 @@ window.Stitcher = (function () {
   function guessKey(filename) {
     const base = filename.replace(/\.[^.]+$/, '').toLowerCase();
     const m = base.match(/(ft|front|bk|back|lf|left|rt|right|up|top|dn|down|bottom)$/);
-    return m ? KEYMAP[m[1]] : null;
+    if (!m) return null;
+    let k = KEYMAP[m[1]];
+    // File yang dinamai menurut properti Roblox (mis. SkyboxLf.png) berisi arah sebaliknya.
+    if ((k === 'Lf' || k === 'Rt') && /skybox/.test(base)) k = k === 'Lf' ? 'Rt' : 'Lf';
+    return k;
   }
 
   function loadFile(file) {
@@ -162,7 +168,7 @@ window.Stitcher = (function () {
       slotUI[f.k] = { thumb: th, label: lab };
     });
 
-    mk('p', { className: 'note', textContent: 'Kalau sisi Up/Down tadinya diputar saat ekspor, pilih rotasi yang sama di sini agar kembali ke posisi asli.' }, root);
+    mk('p', { className: 'note', textContent: 'Rotasi Up/Down bawaan sudah cocok untuk ZIP ekspor aplikasi ini (file SkyboxUp.png tersimpan diputar 90° CCW, SkyboxDn.png 90° CW). Kalau sisimu berasal dari alat lain, atur rotasinya di sini agar kembali ke posisi asli.' }, root);
     const rr = mk('div', { className: 'row' }, root);
     ['Up', 'Dn'].forEach(k => {
       const lab = mk('label', { textContent: 'Rotasi ' + k + ': ' }, rr);

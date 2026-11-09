@@ -121,6 +121,40 @@ Kalau kamu meng-upgrade versi library ini, pastikan hash SRI di `studio.html` di
 - Resolusi input otomatis disesuaikan dengan batas `MAX_TEXTURE_SIZE` GPU peramban.
 - Gambar tunduk pada Roblox Community Standards; hindari konten berhak cipta terlarang.
 
+## Orientasi sisi Roblox (penting, diperbaiki di v1.1.0)
+
+Konvensi sisi `Sky` milik Roblox **berbeda dari kubus standar**: arah kiri/kanan dunia
+diisi lewat properti yang tertukar, dan sisi atas/bawah tersimpan dengan rotasi. Ini
+diverifikasi langsung di Roblox Studio dengan memasang enam tekstur berpenanda (huruf
+asimetris + panah + titik) lalu dilihat dari dalam untuk tiap arah:
+
+| Arah dunia | Properti Roblox | Orientasi gambar (image-top / image-right) |
+|---|---|---|
+| Depan (−Z) | `SkyboxFt` | +Y / +X — sama dengan kubus internal |
+| Belakang (+Z) | `SkyboxBk` | +Y / −X — sama |
+| Kiri (−X) | **`SkyboxRt`** | +Y / −Z — nama properti tertukar, gambar tegak |
+| Kanan (+X) | **`SkyboxLf`** | +Y / +Z — nama properti tertukar, gambar tegak |
+| Atas (+Y) | `SkyboxUp` | +X / −Z — setara render sisi Up **diputar 90° CCW** |
+| Bawah (−Y) | `SkyboxDn` | −X / −Z — setara render sisi Dn **diputar 90° CW** |
+
+Karena itu, sejak v1.1.0 semua jalur keluaran aplikasi sudah mengikuti konvensi Roblox:
+
+- **Upload langsung**: gambar sisi kiri diunggah sebagai aset `SkyboxRt`, sisi kanan
+  sebagai `SkyboxLf`; sisi Up/Down diputar otomatis sebelum diunggah. Nama aset
+  (`<awalan>_Rt`, dst.) mengikuti nama properti, jadi ID tinggal ditempel ke properti
+  `Sky` dengan nama yang sama.
+- **Ekspor ZIP / file per sisi**: nama file = nama properti (`SkyboxRt.png` berisi
+  render sisi kiri), dengan Up/Down sudah diputar — siap diunggah manual via Asset
+  Manager atau `upload-skybox.mjs` tanpa penyesuaian lagi.
+- **Script Luau & .rbxmx**: menerima ID per nama properti.
+- **Stitcher**: mengenali file bernama properti Roblox (menukar Lf/Rt kembali ke slot
+  arah yang benar) dan default rotasi Up=270°/Down=90° untuk membongkar putaran ekspor.
+
+Preview 3D dan panel Preview Cross tetap memakai kubus internal yang benar secara
+geometri, jadi apa yang terlihat di preview = apa yang terlihat di Roblox. Kontinuitas
+global mapping ini diuji otomatis (`tests/verify-convention.mjs`, 57.756 arah sampel
+termasuk semua rusuk kubus dan kutub).
+
 ## Kontribusi
 Issue dan PR dipersilakan. Proyek ini sengaja dibuat tanpa dependency/build step, jadi perubahan langsung ke file `js/*.js` yang relevan.
 

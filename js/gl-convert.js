@@ -10,6 +10,28 @@ window.GLConvert = (function () {
     { k: 'Dn', name: 'Down', f: [0, -1, 0], u: [0, 0, -1], r: [1, 0, 0], cell: [1, 2] }
   ];
 
+  // Konvensi sisi Roblox, diverifikasi langsung di Roblox Studio (v8): keenam arah dunia
+  // dipasang marker (huruf asimetris + panah + titik), lalu dilihat dari dalam.
+  // Hasil: Roblox mengisi arah -X lewat properti SkyboxRt dan arah +X lewat SkyboxLf
+  // (kiri/kanan tertukar dibanding kubus internal aplikasi), SkyboxUp disimpan setara
+  // putaran 90° CCW dan SkyboxDn setara putaran 90° CW dari render sisi aplikasi.
+  // Ft dan Bk identik dengan kubus internal. Lihat README bagian "Orientasi sisi Roblox".
+  const ROBLOX_PROPERTY = { Ft: 'Ft', Bk: 'Bk', Lf: 'Rt', Rt: 'Lf', Up: 'Up', Dn: 'Dn' };
+
+  // Canvas render sisi aplikasi -> gambar siap pakai untuk properti Roblox terkait.
+  // Up/Dn perlu diputar; sisi lain dipakai apa adanya.
+  function rotatedForRoblox(faceKey, src) {
+    if (faceKey !== 'Up' && faceKey !== 'Dn') return src;
+    const s = src.width;
+    const c = document.createElement('canvas');
+    c.width = s; c.height = s;
+    const g = c.getContext('2d');
+    if (faceKey === 'Up') { g.translate(0, s); g.rotate(-Math.PI / 2); } // isi 90° CCW
+    else { g.translate(s, 0); g.rotate(Math.PI / 2); }                  // isi 90° CW
+    g.drawImage(src, 0, 0);
+    return c;
+  }
+
   const glCanvas = document.createElement('canvas');
   let gl = null, isGL2 = false, prog = null, loc = {}, tex = null, maxTex = 4096;
 
@@ -204,7 +226,7 @@ window.GLConvert = (function () {
   }
 
   return {
-    FACES, glCanvas, initGL, uploadTexture, setSize, drawFace, applyWatermark, hexToRgb,
+    FACES, ROBLOX_PROPERTY, rotatedForRoblox, glCanvas, initGL, uploadTexture, setSize, drawFace, applyWatermark, hexToRgb,
     getMaxTex: () => maxTex,
     toBlob: () => new Promise((res, rej) => glCanvas.toBlob(b => b ? res(b) : rej(new Error('toBlob menghasilkan null')), 'image/png'))
   };

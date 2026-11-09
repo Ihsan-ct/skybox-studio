@@ -25,6 +25,9 @@ import fs from 'node:fs';
 import path from 'node:path';
 import zlib from 'node:zlib';
 
+// FACES di sini = nama PROPERTI Roblox. ZIP ekspor aplikasi (v1.1.0+) sudah berisi gambar
+// dengan orientasi properti yang benar (SkyboxRt.png = sisi kiri, Up/Dn sudah diputar),
+// jadi file cukup diunggah apa adanya dan ID-nya langsung dipakai per properti.
 const FACES = ['Ft', 'Bk', 'Lf', 'Rt', 'Up', 'Dn'];
 const API = 'https://apis.roblox.com/assets/v1';
 const MAX_BYTES = 20 * 1024 * 1024;

@@ -10,6 +10,7 @@ window.ZipExport = (function () {
     setTimeout(() => URL.revokeObjectURL(url), 60000); return url;
   }
 
+  // Render sisi lalu ubah ke orientasi properti Roblox terkait (nama file = Skybox<Properti>).
   async function renderFaceCanvas(face, size, state) {
     const GL = window.GLConvert;
     GL.setSize(size);
@@ -18,13 +19,17 @@ window.ZipExport = (function () {
     const ctx = c.getContext('2d');
     ctx.drawImage(GL.glCanvas, 0, 0);
     GL.applyWatermark(ctx, face.k, size, state);
-    return new Promise((res, rej) => c.toBlob(b => b ? res(b) : rej(new Error('toBlob menghasilkan null')), 'image/png'));
+    return GL.rotatedForRoblox(face.k, c);
   }
 
+  const canvasToBlob = c => new Promise((res, rej) => c.toBlob(b => b ? res(b) : rej(new Error('toBlob menghasilkan null')), 'image/png'));
+
   async function exportOne(face, state, setStatus) {
+    const GL = window.GLConvert;
+    const prop = GL.ROBLOX_PROPERTY[face.k];
     setStatus({ text: 'Merender ' + face.name + ' (' + state.exportRes + 'px)…' }); await tick();
-    const blob = await renderFaceCanvas(face, state.exportRes, state);
-    const fileName = 'Skybox' + face.k + '.png';
+    const blob = await canvasToBlob(await renderFaceCanvas(face, state.exportRes, state));
+    const fileName = 'Skybox' + prop + '.png';
     const blobUrl = downloadBlob(blob, fileName);
     setStatus({
       text: 'Ekspor ' + fileName + ' selesai! Jika tidak otomatis mengunduh,',
@@ -42,8 +47,8 @@ window.ZipExport = (function () {
     for (let i = 0; i < GL.FACES.length; i++) {
       const f = GL.FACES[i];
       setStatus({ text: 'Merender ' + f.name + ' (' + (i + 1) + '/6)…' }); await tick();
-      const blob = await renderFaceCanvas(f, state.exportRes, state);
-      zip.file('Skybox' + f.k + '.png', blob);
+      const blob = await canvasToBlob(await renderFaceCanvas(f, state.exportRes, state));
+      zip.file('Skybox' + GL.ROBLOX_PROPERTY[f.k] + '.png', blob);
     }
     setStatus({ text: 'Menyusun berkas ZIP…' }); await tick();
     const content = await zip.generateAsync({ type: 'blob', compression: 'STORE' });

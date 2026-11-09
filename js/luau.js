@@ -1,4 +1,7 @@
 "use strict";
+// ids dipetakan per nama PROPERTI Roblox (ids.Rt = Image ID untuk SkyboxRt, yang gambarnya
+// dirender dari sisi kiri — konvensi Roblox, lihat catatan di gl-convert.js). Karena kunci
+// FACES sama dengan nama properti, penugasan sky.Skybox<k> di bawah langsung benar.
 window.LuauGen = (function () {
   const FACES = window.GLConvert.FACES;
 

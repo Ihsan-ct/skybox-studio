@@ -556,7 +556,8 @@
 
   GL.FACES.forEach(f => {
     const b = document.createElement('button'); b.type = 'button'; b.disabled = true;
-    b.textContent = 'Skybox' + f.k + '.png';
+    // Nama file mengikuti properti Roblox yang diisi gambarnya (SkyboxRt.png = render sisi kiri, dst).
+    b.textContent = 'Skybox' + GL.ROBLOX_PROPERTY[f.k] + '.png';
     b.addEventListener('click', async () => {
       setExportButtonsBusy(true);
       try {
@@ -671,9 +672,10 @@
   }
   GL.FACES.forEach(f => {
     const row = document.createElement('div'); row.className = 'field';
-    const lab = document.createElement('label'); lab.htmlFor = 'id_' + f.k; lab.textContent = f.name;
+    // Kolom ID memakai nama properti Roblox (SkyboxLf dst.) supaya cocok dengan Asset Manager.
+    const lab = document.createElement('label'); lab.htmlFor = 'id_' + f.k; lab.textContent = 'Skybox' + f.k;
     const inp = document.createElement('input'); inp.type = 'text'; inp.id = 'id_' + f.k;
-    inp.inputMode = 'numeric'; inp.placeholder = 'Image ID ' + f.name;
+    inp.inputMode = 'numeric'; inp.placeholder = 'Image ID Skybox' + f.k;
     inp.addEventListener('input', () => { state.ids[f.k] = inp.value; state.uploadType = null; refreshLuau(); });
     row.appendChild(lab); row.appendChild(inp); $('idfields').appendChild(row);
   });
