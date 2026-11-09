@@ -39,6 +39,7 @@
       <button role="tab" id="tab-cross" aria-selected="true" aria-controls="panel-cross" tabindex="0" type="button">Preview Cross</button>
       <button role="tab" id="tab-3d" aria-selected="false" aria-controls="panel-3d" tabindex="-1" type="button">Preview 3D</button>
       <button role="tab" id="tab-luau" aria-selected="false" aria-controls="panel-luau" tabindex="-1" type="button">Script Luau</button>
+      <button role="tab" id="tab-stitch" aria-selected="false" aria-controls="panel-stitch" tabindex="-1" type="button">Stitcher</button>
       <span class="spacer"></span>
       <button id="btnZip" class="primary" type="button" disabled>Unduh ZIP</button>
     </div>
@@ -64,6 +65,8 @@
         </div>
       </div>
     </div>
+
+    <div id="panel-stitch" role="tabpanel" aria-labelledby="tab-stitch" hidden></div>
 
     <div id="panel-luau" role="tabpanel" aria-labelledby="tab-luau" hidden>
       <p style="margin-top:0">Isi Image ID tiap sisi (angka saja) setelah kamu mengunggahnya ke Roblox.</p>
@@ -132,6 +135,7 @@
 <script src="js/viewer3d.js"></script>
 <script src="js/zip-export.js"></script>
 <script src="js/luau.js"></script>
+<script src="js/stitcher.js"></script>
 <script src="js/main.js"></script>
 </body>
 </html>

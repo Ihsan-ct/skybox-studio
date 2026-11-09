@@ -495,7 +495,8 @@
     setImage(c, c.width, c.height, 'Gambar Uji', null, { skipRatioCheck: true });
   });
 
-  const tabNames = ['cross', '3d', 'luau'];
+  const tabNames = ['cross', '3d', 'luau', 'stitch'];
+  window.Stitcher.build($('panel-stitch'));
   function switchTab(name) {
     activeTab = name;
     tabNames.forEach(t => {
@@ -580,6 +581,7 @@
 
   window.MainApp = {
     addBanner,
+    loadPanorama: (c, name) => { setImage(c, c.width, c.height, name, null, { skipRatioCheck: true }); switchTab('cross'); },
     onGLContextLost: () => {
       if (!glLostBanner) {
         glLostBanner = addBanner('error', 'Konteks WebGL hilang. Memulihkan grafis...');
