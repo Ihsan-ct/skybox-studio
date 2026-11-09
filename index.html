@@ -37,6 +37,7 @@
       <button id="btnZip" class="primary" type="button" disabled>Unduh ZIP</button>
     </div>
 
+    <!-- Panel 1: Cross Net -->
     <div id="panel-cross" role="tabpanel">
       <div class="stage">
         <canvas id="cross" width="1024" height="768" aria-label="Preview 6 sisi skybox dalam susunan cross"></canvas>
@@ -46,18 +47,21 @@
       <div id="status" role="status" aria-live="polite"></div>
     </div>
 
+    <!-- Panel 2: Preview 3D (Modul B + Dummy Avatar) -->
     <div id="panel-3d" role="tabpanel" hidden>
       <div class="stage" id="stage3d"></div>
-      <div class="row" style="margin-top:8px; align-items:center;">
-        <label class="check"><input type="checkbox" id="chkBaseplate" checked> Baseplate Roblox</label>
+      <div class="row" style="margin-top:8px; align-items:center; gap:14px;">
+        <label class="check"><input type="checkbox" id="chkCharacter" checked> Karakter Roblox</label>
+        <label class="check"><input type="checkbox" id="chkBaseplate" checked> Baseplate</label>
         <label class="check"><input type="checkbox" id="chkWireframe"> Wireframe Seam</label>
-        <div class="slider" style="margin:0; width:150px;">
+        <div class="slider" style="margin:0; width:140px;">
           <label>FOV: <output id="out_fov">75</output></label>
           <input type="range" id="s_fov" min="40" max="100" value="75">
         </div>
       </div>
     </div>
 
+    <!-- Panel 3: Script Luau -->
     <div id="panel-luau" role="tabpanel" hidden>
       <p style="margin-top:0">Isi Image ID tiap sisi (angka saja) setelah kamu mengunggahnya ke Roblox.</p>
       <div id="idfields"></div>
@@ -65,40 +69,42 @@
       <pre id="luau" aria-label="Script Luau"></pre>
       <button id="btnCopy" type="button">Salin script</button>
       <span id="copystatus" role="status" style="margin-left:8px;font-size:13px;color:var(--muted)"></span>
-      <div class="guide">
-        <h3>Panduan unggah singkat</h3>
-        <ol>
-          <li>Unduh ZIP, ekstrak, lalu unggah 6 gambar lewat Asset Manager di Roblox Studio (Bulk Import) atau lewat Creator Hub.</li>
-          <li>Pakai <strong>Image ID</strong>, bukan Decal ID. Salah memakai Decal ID adalah penyebab paling umum skybox putih.</li>
-          <li>Tempel script di Command Bar Studio.</li>
-        </ol>
-      </div>
     </div>
   </section>
 
   <section id="sec-controls" class="card" aria-label="Kontrol">
     <details class="group" open>
       <summary>Resolusi ekspor</summary>
-      <div class="seg" id="segRes" role="group" aria-label="Resolusi ekspor"></div>
+      <div class="seg" id="segRes" role="group"></div>
       <p class="note">1024 adalah default yang aman; Roblox bisa menurunkan gambar yang lebih besar.</p>
     </details>
     <details class="group" open>
-      <summary>Posisi</summary>
+      <summary>Posisi & Horizon</summary>
       <div id="grpPos"></div>
       <button class="reset" type="button" data-reset="pos">Reset posisi</button>
     </details>
     <details class="group" open>
-      <summary>Warna</summary>
+      <summary>Warna & Suhu</summary>
       <div id="grpColor"></div>
       <button class="reset" type="button" data-reset="color">Reset warna</button>
+    </details>
+    <details class="group">
+      <summary>Watermark Sisi Bawah (Dn)</summary>
+      <div class="row" style="margin-top:4px;">
+        <input type="file" id="wmFile" accept="image/*" hidden>
+        <button type="button" class="btn" onclick="document.getElementById('wmFile').click()">Pilih Logo</button>
+        <button type="button" class="btn" id="btnWmClear">Hapus Logo</button>
+      </div>
+      <p id="wmName" class="note">Belum ada logo</p>
+      <div id="grpWm"></div>
     </details>
     <details class="group" open>
       <summary>Koreksi orientasi</summary>
       <div class="seglabel">Rotasi sisi Up</div>
-      <div class="seg" id="segUp" role="group" aria-label="Rotasi sisi Up"></div>
+      <div class="seg" id="segUp" role="group"></div>
       <div class="seglabel">Rotasi sisi Down</div>
-      <div class="seg" id="segDn" role="group" aria-label="Rotasi sisi Down"></div>
-      <label class="check"><input type="checkbox" id="flipH"> Flip horizontal (panorama ter-mirror)</label>
+      <div class="seg" id="segDn" role="group"></div>
+      <label class="check"><input type="checkbox" id="flipH"> Flip horizontal (mirror)</label>
       <button class="reset" type="button" data-reset="orient">Reset orientasi</button>
     </details>
   </section>

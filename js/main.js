@@ -3,56 +3,25 @@
   const $ = id => document.getElementById(id);
   const GL = window.GLConvert;
 
-  const DEFAULTS = { yaw: 0, pitch: 0, brightness: 0, contrast: 0, saturation: 100, rotUp: 0, rotDn: 0, flipH: false };
+  const DEFAULTS = {
+    yaw: 0, pitch: 0, horizon: 0, brightness: 0, contrast: 0, saturation: 100, warmth: 0,
+    rotUp: 0, rotDn: 0, flipH: false,
+    watermarkImg: null, watermarkScale: 25, watermarkOpacity: 50
+  };
 
-  function loadPrefs() {
-    try {
-      const p = JSON.parse(localStorage.getItem('skybox_prefs') || '{}');
-      return {
-        exportRes: p.exportRes || 1024,
-        rotUp: typeof p.rotUp === 'number' ? p.rotUp : 0,
-        rotDn: typeof p.rotDn === 'number' ? p.rotDn : 0
-      };
-    } catch (e) {
-      return { exportRes: 1024, rotUp: 0, rotDn: 0 };
-    }
-  }
-
-  function savePrefs() {
-    try {
-      localStorage.setItem('skybox_prefs', JSON.stringify({
-        exportRes: state.exportRes, rotUp: state.rotUp, rotDn: state.rotDn
-      }));
-    } catch (e) {}
-  }
-
-  const prefs = loadPrefs();
   const state = Object.assign({
-    image: null, exportRes: prefs.exportRes,
+    image: null, exportRes: 1024,
     ids: { Ft: '', Bk: '', Lf: '', Rt: '', Up: '', Dn: '' }
-  }, DEFAULTS, { rotUp: prefs.rotUp, rotDn: prefs.rotDn });
+  }, DEFAULTS);
 
   let busy = false;
   const PREVIEW = 256;
 
   function setStatus(text) { $('status').textContent = text || ''; }
-
-  function addBanner(kind, text, acts) {
+  function addBanner(kind, text) {
     const el = document.createElement('div'); el.className = 'banner ' + kind;
-    const msg = document.createElement('div'); msg.className = 'msg';
-    const t = document.createElement('div'); t.textContent = text; msg.appendChild(t);
-    if (acts && acts.length) {
-      const a = document.createElement('div'); a.className = 'acts';
-      acts.forEach(act => {
-        const b = document.createElement('button'); b.type = 'button'; b.textContent = act.label;
-        b.addEventListener('click', () => { act.fn(); el.remove(); });
-        a.appendChild(b);
-      });
-      msg.appendChild(a);
-    }
-    const x = document.createElement('button'); x.type = 'button'; x.className = 'x';
-    x.textContent = '×'; x.addEventListener('click', () => el.remove());
-    el.appendChild(msg); el.appendChild(x);
+    el.innerHTML = `<div class="msg"><div>${text}</div></div><button class="x">×</button>`;
+    el.querySelector('.x').onclick = () => el.remove();
     $('banners').appendChild(el);
   }
   function clearBanners() { $('banners').textContent = ''; }
@@ -78,81 +47,37 @@
 
     GL.FACES.forEach(f => {
       GL.drawFace(f, PREVIEW, state);
-      cctx.drawImage(GL.glCanvas, f.cell[0] * PREVIEW, f.cell[1] * PREVIEW);
-
+      
       const c = document.createElement('canvas'); c.width = PREVIEW; c.height = PREVIEW;
-      c.getContext('2d').drawImage(GL.glCanvas, 0, 0);
+      const ctx = c.getContext('2d');
+      ctx.drawImage(GL.glCanvas, 0, 0);
+      GL.applyWatermark(ctx, f.k, PREVIEW, state);
+
+      cctx.drawImage(c, f.cell[0] * PREVIEW, f.cell[1] * PREVIEW);
       window.Viewer3D.updateFaceTexture(f.k, c);
     });
   }
 
   function setImage(src, w, h, name, size, opts = {}) {
     if (!opts.keepBanners) clearBanners();
-    if (!w || !h || w <= 0 || h <= 0) {
-      addBanner('error', 'Dimensi berkas tidak valid.'); return;
-    }
-    let source = src, nw = w, nh = h;
-    const maxTex = GL.getMaxTex();
-    if (w > maxTex || h > maxTex) {
-      const s = Math.min(maxTex / w, maxTex / h);
-      nw = Math.max(1, Math.floor(w * s)); nh = Math.max(1, Math.floor(h * s));
-      const c = document.createElement('canvas'); c.width = nw; c.height = nh;
-      c.getContext('2d').drawImage(src, 0, 0, nw, nh);
-      source = c;
-      addBanner('info', `Gambar terlalu besar untuk GPU ini. Dikecilkan otomatis ke ${nw}×${nh} px.`);
-    }
-
-    state.image = { source, width: nw, height: nh, name, size, origW: opts.origW || w, origH: opts.origH || h };
-    try { GL.uploadTexture(source); }
-    catch (e) { addBanner('error', e.message); return; }
-
-    $('fileinfo').textContent = `${name} · ${nw}×${nh} px`;
+    state.image = { source: src, width: w, height: h, name, size };
+    try { GL.uploadTexture(src); } catch (e) { addBanner('error', e.message); return; }
+    $('fileinfo').textContent = `${name} · ${w}×${h} px`;
     $('empty').hidden = true;
     $('btnZip').disabled = false;
     document.querySelectorAll('#facebtns button').forEach(b => b.disabled = false);
-
-    if (!opts.skipRatio) {
-      const r = nw / nh;
-      if (Math.abs(r - 2) / 2 > 0.05) {
-        addBanner('warn', `Rasio gambar ${r.toFixed(2)}:1, bukan 2:1.`, [
-          { label: 'Biarkan', fn: () => {} },
-          { label: 'Crop 2:1', fn: () => fitRatio('crop') },
-          { label: 'Pad 2:1', fn: () => fitRatio('pad') }
-        ]);
-      }
-    }
     requestRender();
   }
 
-  function fitRatio(mode) {
-    const im = state.image; if (!im) return;
-    let cw, ch;
-    if (mode === 'crop') {
-      if (im.width / im.height > 2) { ch = im.height; cw = im.height * 2; }
-      else { cw = im.width; ch = Math.floor(im.width / 2); }
-    } else {
-      if (im.width / im.height > 2) { cw = im.width; ch = Math.ceil(im.width / 2); }
-      else { ch = im.height; cw = im.height * 2; }
-    }
-    cw = Math.max(1, cw); ch = Math.max(1, ch);
-    const c = document.createElement('canvas'); c.width = cw; c.height = ch;
-    const g = c.getContext('2d');
-    g.fillStyle = '#000'; g.fillRect(0, 0, cw, ch);
-    g.drawImage(im.source, Math.floor((cw - im.width) / 2), Math.floor((ch - im.height) / 2));
-    setImage(c, cw, ch, im.name + ` (${mode} 2:1)`, im.size, { skipRatio: true, origW: im.origW, origH: im.origH, keepBanners: true });
-  }
-
   function loadFile(file) {
-    if (!file || !/^image\//.test(file.type)) {
-      addBanner('error', 'Pilih berkas JPG, PNG, atau WebP.'); return;
-    }
+    if (!file || !/^image\//.test(file.type)) return;
     const url = URL.createObjectURL(file);
     const img = new Image();
     img.onload = () => { URL.revokeObjectURL(url); setImage(img, img.naturalWidth, img.naturalHeight, file.name, file.size); };
-    img.onerror = () => { URL.revokeObjectURL(url); addBanner('error', 'Berkas gambar rusak.'); };
     img.src = url;
   }
 
+  // Sliders
   const sliders = {};
   function addSlider(parent, key, label, min, max, step, unit) {
     const wrap = document.createElement('div'); wrap.className = 'slider';
@@ -169,23 +94,41 @@
   }
   function setSlider(k, v) { state[k] = v; sliders[k].inp.value = v; sliders[k].show(); }
 
+  addSlider($('grpPos'), 'yaw', 'Yaw (horizontal)', 0, 360, 1, '°');
+  addSlider($('grpPos'), 'pitch', 'Pitch (vertikal)', -45, 45, 1, '°');
+  addSlider($('grpPos'), 'horizon', 'Horizon Level', -30, 30, 1, '°');
+
+  addSlider($('grpColor'), 'brightness', 'Brightness', -100, 100, 1, '');
+  addSlider($('grpColor'), 'contrast', 'Contrast', -100, 100, 1, '');
+  addSlider($('grpColor'), 'saturation', 'Saturation', 0, 200, 1, '%');
+  addSlider($('grpColor'), 'warmth', 'Warmth (Suhu)', -100, 100, 1, '');
+
+  // Watermark handlers
+  $('wmFile').addEventListener('change', e => {
+    const f = e.target.files[0];
+    if (f) {
+      const img = new Image();
+      img.onload = () => { state.watermarkImg = img; $('wmName').textContent = f.name; requestRender(); };
+      img.src = URL.createObjectURL(f);
+    }
+  });
+  $('btnWmClear').addEventListener('click', () => {
+    state.watermarkImg = null; $('wmFile').value = ''; $('wmName').textContent = 'Belum ada logo'; requestRender();
+  });
+  addSlider($('grpWm'), 'watermarkScale', 'Ukuran Logo', 5, 50, 1, '%');
+  addSlider($('grpWm'), 'watermarkOpacity', 'Transparansi', 10, 100, 1, '%');
+
   function makeSeg(el, values, labelFn, getFn, setFn) {
     const refresh = () => el.querySelectorAll('button').forEach(b =>
       b.setAttribute('aria-pressed', String(Number(b.dataset.v) === getFn())));
     values.forEach(v => {
       const b = document.createElement('button'); b.type = 'button'; b.dataset.v = v; b.textContent = labelFn(v);
-      b.addEventListener('click', () => { setFn(v); refresh(); savePrefs(); });
+      b.addEventListener('click', () => { setFn(v); refresh(); });
       el.appendChild(b);
     });
     refresh();
     return refresh;
   }
-
-  addSlider($('grpPos'), 'yaw', 'Yaw (horizontal)', 0, 360, 1, '°');
-  addSlider($('grpPos'), 'pitch', 'Pitch (vertikal)', -45, 45, 1, '°');
-  addSlider($('grpColor'), 'brightness', 'Brightness', -100, 100, 1, '');
-  addSlider($('grpColor'), 'contrast', 'Contrast', -100, 100, 1, '');
-  addSlider($('grpColor'), 'saturation', 'Saturation', 0, 200, 1, '%');
 
   makeSeg($('segRes'), [512, 1024, 2048], v => v + ' px', () => state.exportRes, v => { state.exportRes = v; });
   const refUp = makeSeg($('segUp'), [0, 90, 180, 270], v => v + '°', () => state.rotUp, v => { state.rotUp = v; requestRender(); });
@@ -194,9 +137,9 @@
 
   document.querySelectorAll('[data-reset]').forEach(b => b.addEventListener('click', () => {
     const g = b.dataset.reset;
-    if (g === 'pos') { setSlider('yaw', 0); setSlider('pitch', 0); }
-    if (g === 'color') { setSlider('brightness', 0); setSlider('contrast', 0); setSlider('saturation', 100); }
-    if (g === 'orient') { state.rotUp = 0; state.rotDn = 0; state.flipH = false; $('flipH').checked = false; refUp(); refDn(); savePrefs(); }
+    if (g === 'pos') { setSlider('yaw', 0); setSlider('pitch', 0); setSlider('horizon', 0); }
+    if (g === 'color') { setSlider('brightness', 0); setSlider('contrast', 0); setSlider('saturation', 100); setSlider('warmth', 0); }
+    if (g === 'orient') { state.rotUp = 0; state.rotDn = 0; state.flipH = false; $('flipH').checked = false; refUp(); refDn(); }
     requestRender();
   }));
 
@@ -214,6 +157,7 @@
     finally { busy = false; $('btnZip').disabled = false; renderAll(); }
   });
 
+  // Upload
   const drop = $('drop'), fileInput = $('file');
   drop.addEventListener('click', () => fileInput.click());
   fileInput.addEventListener('change', () => { if (fileInput.files[0]) loadFile(fileInput.files[0]); fileInput.value = ''; });
@@ -222,16 +166,13 @@
   drop.addEventListener('drop', e => { const f = e.dataTransfer && e.dataTransfer.files[0]; if (f) loadFile(f); });
   window.addEventListener('dragover', e => e.preventDefault());
   window.addEventListener('drop', e => e.preventDefault());
-  document.addEventListener('paste', e => {
-    const it = e.clipboardData && e.clipboardData.items;
-    if (it) for (let i = 0; i < it.length; i++) if (it[i].kind === 'file') loadFile(it[i].getAsFile());
-  });
 
   $('btnTest').addEventListener('click', () => {
     const c = window.makeTestPanorama();
     setImage(c, c.width, c.height, 'Gambar Uji', null);
   });
 
+  // Tabs
   function switchTab(name) {
     ['cross', '3d', 'luau'].forEach(t => {
       const isSel = t === name;
@@ -245,12 +186,12 @@
     }
     if (name === 'cross') requestRender();
   }
-
-  $('tab-cross').addEventListener('click', () => switchTab('cross'));
-  $('tab-3d').addEventListener('click', () => switchTab('3d'));
-  $('tab-luau').addEventListener('click', () => switchTab('luau'));
+  $('tab-cross').onclick = () => switchTab('cross');
+  $('tab-3d').onclick = () => switchTab('3d');
+  $('tab-luau').onclick = () => switchTab('luau');
 
   $('chkBaseplate').addEventListener('change', e => window.Viewer3D.setBaseplate(e.target.checked));
+  $('chkCharacter').addEventListener('change', e => window.Viewer3D.setCharacter(e.target.checked));
   $('chkWireframe').addEventListener('change', e => window.Viewer3D.setWireframe(e.target.checked));
   $('s_fov').addEventListener('input', e => {
     window.Viewer3D.setFov(Number(e.target.value));

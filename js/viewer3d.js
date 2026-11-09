@@ -2,7 +2,7 @@
 window.Viewer3D = (function () {
   let scene, camera, renderer, controls;
   const faceMeshes = {};
-  let baseplateGroup;
+  let baseplateGroup, characterGroup;
   let isInitialized = false;
 
   function init(container) {
@@ -25,7 +25,6 @@ window.Viewer3D = (function () {
 
     const D = 200;
     const planeGeo = new THREE.PlaneGeometry(D, D);
-    
     const configs = [
       { k: 'Ft', pos: [0, 0, -D / 2], rot: [0, 0, 0] },
       { k: 'Bk', pos: [0, 0, D / 2], rot: [0, Math.PI, 0] },
@@ -44,11 +43,37 @@ window.Viewer3D = (function () {
       faceMeshes[c.k] = mesh;
     });
 
+    // Baseplate Roblox
     baseplateGroup = new THREE.Group();
     const grid = new THREE.GridHelper(80, 40, 0x4a90d9, 0x343a4b);
     grid.position.y = -20;
     baseplateGroup.add(grid);
     scene.add(baseplateGroup);
+
+    // Karakter Dummy Roblox Blocky 3D
+    characterGroup = new THREE.Group();
+    const matHead = new THREE.MeshLambertMaterial({ color: 0xffcd34 });
+    const matTorso = new THREE.MeshLambertMaterial({ color: 0x0074d9 });
+    const matArm = new THREE.MeshLambertMaterial({ color: 0xffcd34 });
+    const matLeg = new THREE.MeshLambertMaterial({ color: 0x2ecc40 });
+
+    const head = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.2, 1.2), matHead); head.position.y = 4.6;
+    const torso = new THREE.Mesh(new THREE.BoxGeometry(2, 2, 1), matTorso); torso.position.y = 3;
+    const armL = new THREE.Mesh(new THREE.BoxGeometry(1, 2, 1), matArm); armL.position.set(-1.5, 3, 0);
+    const armR = new THREE.Mesh(new THREE.BoxGeometry(1, 2, 1), matArm); armR.position.set(1.5, 3, 0);
+    const legL = new THREE.Mesh(new THREE.BoxGeometry(1, 2, 1), matLeg); legL.position.set(-0.5, 1, 0);
+    const legR = new THREE.Mesh(new THREE.BoxGeometry(1, 2, 1), matLeg); legR.position.set(0.5, 1, 0);
+
+    characterGroup.add(head, torso, armL, armR, legL, legR);
+    characterGroup.position.set(0, -20, -10); // di atas baseplate
+    characterGroup.scale.set(1.5, 1.5, 1.5);
+    scene.add(characterGroup);
+
+    // Pencahayaan untuk karakter
+    const ambLight = new THREE.AmbientLight(0xffffff, 0.8);
+    const dirLight = new THREE.DirectionalLight(0xffffff, 0.6);
+    dirLight.position.set(5, 15, 10);
+    scene.add(ambLight, dirLight);
 
     function animate() {
       requestAnimationFrame(animate);
@@ -79,22 +104,19 @@ window.Viewer3D = (function () {
     faceMeshes[faceKey].material.needsUpdate = true;
   }
 
-  function setBaseplate(show) {
-    if (baseplateGroup) baseplateGroup.visible = show;
-  }
-
+  function setBaseplate(show) { if (baseplateGroup) baseplateGroup.visible = show; }
+  function setCharacter(show) { if (characterGroup) characterGroup.visible = show; }
   function setWireframe(show) {
     Object.values(faceMeshes).forEach(m => {
       m.material.wireframe = show;
       m.material.needsUpdate = true;
     });
   }
-
   function setFov(fov) {
     if (!camera) return;
     camera.fov = fov;
     camera.updateProjectionMatrix();
   }
 
-  return { init, onResize, updateFaceTexture, setBaseplate, setWireframe, setFov };
+  return { init, onResize, updateFaceTexture, setBaseplate, setCharacter, setWireframe, setFov };
 })();

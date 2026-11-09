@@ -25,6 +25,7 @@ window.GLConvert = (function () {
     'uniform vec3 uFwd; uniform vec3 uRight; uniform vec3 uUp;',
     'uniform float uRot; uniform float uYaw; uniform float uPitch; uniform float uFlip;',
     'uniform float uBri; uniform float uCon; uniform float uSat;',
+    'uniform float uHorizon; uniform float uWarmth;',
     'const float PI = 3.14159265359;',
     'void main(){',
     '  vec2 p = gl_FragCoord.xy / uSize * 2.0 - 1.0;',
@@ -34,7 +35,7 @@ window.GLConvert = (function () {
     '  float cp = cos(uPitch); float sp = sin(uPitch);',
     '  d = vec3(d.x, cp*d.y - sp*d.z, sp*d.y + cp*d.z);',
     '  float lon = atan(d.x, -d.z) + uYaw;',
-    '  float lat = asin(clamp(d.y, -1.0, 1.0));',
+    '  float lat = asin(clamp(d.y, -1.0, 1.0)) - uHorizon;',
     '  float u = fract(lon / (2.0*PI) + 0.5);',
     '  if (uFlip > 0.5) u = 1.0 - u;',
     '  float v = 0.5 - lat / PI;',
@@ -43,6 +44,7 @@ window.GLConvert = (function () {
     '  c = (c - 0.5) * (1.0 + uCon) + 0.5;',
     '  float l = dot(c, vec3(0.2126, 0.7152, 0.0722));',
     '  c = mix(vec3(l), c, uSat);',
+    '  c *= vec3(1.0 + uWarmth * 0.15, 1.0 + uWarmth * 0.03, 1.0 - uWarmth * 0.15);',
     '  gl_FragColor = vec4(clamp(c, 0.0, 1.0), 1.0);',
     '}'
   ].join('\n');
@@ -66,7 +68,7 @@ window.GLConvert = (function () {
     const a = gl.getAttribLocation(prog, 'aPos');
     gl.enableVertexAttribArray(a);
     gl.vertexAttribPointer(a, 2, gl.FLOAT, false, 0, 0);
-    ['uTex', 'uSize', 'uFwd', 'uRight', 'uUp', 'uRot', 'uYaw', 'uPitch', 'uFlip', 'uBri', 'uCon', 'uSat']
+    ['uTex', 'uSize', 'uFwd', 'uRight', 'uUp', 'uRot', 'uYaw', 'uPitch', 'uFlip', 'uBri', 'uCon', 'uSat', 'uHorizon', 'uWarmth']
       .forEach(n => loc[n] = gl.getUniformLocation(prog, n));
     maxTex = gl.getParameter(gl.MAX_TEXTURE_SIZE) || 4096;
   }
@@ -117,11 +119,29 @@ window.GLConvert = (function () {
     gl.uniform1f(loc.uBri, state.brightness / 100);
     gl.uniform1f(loc.uCon, state.contrast / 100);
     gl.uniform1f(loc.uSat, state.saturation / 100);
+    gl.uniform1f(loc.uHorizon, (state.horizon || 0) * PI / 180);
+    gl.uniform1f(loc.uWarmth, (state.warmth || 0) / 100);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
   }
 
+  // Terapkan watermark pada canvas 2D bila sisi Dn
+  function applyWatermark(cctx, faceKey, size, state) {
+    if (faceKey === 'Dn' && state.watermarkImg) {
+      const wm = state.watermarkImg;
+      const scale = (state.watermarkScale || 25) / 100;
+      const opacity = (state.watermarkOpacity || 50) / 100;
+      const wmSize = size * scale;
+      const x = (size - wmSize) / 2;
+      const y = (size - wmSize) / 2;
+      cctx.save();
+      cctx.globalAlpha = opacity;
+      cctx.drawImage(wm, x, y, wmSize, wmSize);
+      cctx.restore();
+    }
+  }
+
   return {
-    FACES, glCanvas, initGL, uploadTexture, setSize, drawFace,
+    FACES, glCanvas, initGL, uploadTexture, setSize, drawFace, applyWatermark,
     getMaxTex: () => maxTex,
     toBlob: () => new Promise((res, rej) => glCanvas.toBlob(b => b ? res(b) : rej(new Error('toBlob gagal')), 'image/png'))
   };
