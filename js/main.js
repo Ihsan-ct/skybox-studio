@@ -42,7 +42,7 @@
   const saved = loadPrefs();
   const DEFAULTS = {
     yaw: 0, pitch: 0, horizon: 0, fadeHorizon: saved.fadeHorizon || 0, fadeColor: saved.fadeColor || '#808080',
-    brightness: 0, contrast: 0, saturation: 100, warmth: 0,
+    brightness: 0, contrast: 0, saturation: 100, warmth: 0, seamBlend: 8,
     rotUp: (typeof saved.rotUp === 'number') ? saved.rotUp : 0,
     rotDn: (typeof saved.rotDn === 'number') ? saved.rotDn : 0,
     flipH: false,
@@ -326,6 +326,7 @@
   addSlider($('grpPos'), 'yaw', 'Yaw (horizontal)', 0, 360, 1, '°');
   addSlider($('grpPos'), 'pitch', 'Pitch (vertikal)', -45, 45, 1, '°');
   addSlider($('grpPos'), 'horizon', 'Horizon Level', -30, 30, 1, '°');
+  addSlider($('grpPos'), 'seamBlend', 'Haluskan sambungan', 0, 25, 1, '%');
   addSlider($('grpPos'), 'fadeHorizon', 'Fade Horizon', 0, 45, 1, '°', savePrefs);
 
   const fadeColorWrap = document.createElement('div'); fadeColorWrap.className = 'color-picker';
@@ -388,7 +389,7 @@
   document.querySelectorAll('[data-reset]').forEach(b => b.addEventListener('click', () => {
     const g = b.dataset.reset;
     if (g === 'pos') {
-      setSlider('yaw', 0); setSlider('pitch', 0); setSlider('horizon', 0); setSlider('fadeHorizon', 0);
+      setSlider('yaw', 0); setSlider('pitch', 0); setSlider('horizon', 0); setSlider('fadeHorizon', 0); setSlider('seamBlend', 8);
       state.fadeColor = '#808080'; fadeColorInp.value = '#808080';
     }
     if (g === 'color') {
@@ -449,6 +450,7 @@
   window.addEventListener('drop', e => e.preventDefault());
 
   $('btnTest').addEventListener('click', () => {
+    setSlider('seamBlend', 0);
     const c = window.makeTestPanorama();
     setImage(c, c.width, c.height, 'Gambar Uji', null, { skipRatioCheck: true });
   });
