@@ -241,6 +241,9 @@
 
     if (!opts.skipRatioCheck) {
       const ratio = w / h;
+      if (Math.abs(ratio - 2.0) / 2.0 <= 0.05 && flat.mode === 'pano') {
+        addBanner('info', 'Gambar 2:1 dipakai apa adanya sebagai panorama. Kalau hasilnya berpilin/jepit di satu titik (panorama palsu dari AI), ganti "Jenis gambar" ke "Gambar biasa" di Pengaturan agar diproyeksikan ulang — atau regenerate pakai template [Ganti Ini] di tab AI Prompt.');
+      }
       if (Math.abs(ratio - 2.0) / 2.0 > 0.05) {
         addBanner('warn', `Rasio gambar (${w}×${h}) bukan 2:1. Skybox mungkin terlihat terdistorsi.`, [
           { label: 'Biarkan (diregangkan)', fn: () => {} },
