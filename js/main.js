@@ -519,6 +519,8 @@
     if (name === 'cross') requestRender();
   }
 
+  if (location.hash === '#rbx') switchTab('rbx');
+
   tabNames.forEach((t, idx) => {
     const tabEl = $(`tab-${t}`);
     tabEl.addEventListener('click', () => switchTab(t));

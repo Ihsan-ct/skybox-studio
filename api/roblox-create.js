@@ -5,12 +5,14 @@
 // hanya diteruskan apa adanya dari header request ke header request berikutnya.
 
 import { guard } from './_guard.js';
+import { requireUser } from './_session.js';
 
 // Vercel membatasi body request function sampai 4,5 MB (413 sebelum kode ini jalan).
 const MAX_BYTES = 4.4 * 1024 * 1024;
 
 export default async function handler(req, res) {
   if (!guard(req, res)) return;
+  if (!requireUser(req, res)) return; // wajib login (Google/Discord)
   if (req.method !== 'POST') {
     res.status(405).json({ error: 'Method tidak didukung, gunakan POST.' });
     return;

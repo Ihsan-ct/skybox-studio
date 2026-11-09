@@ -136,6 +136,7 @@ window.RobloxUpload = (function () {
       if (type === 'Decal') {
         log('Catatan: aset berupa Decal. Kalau skybox tampil putih di game, ambil Image ID dari Asset Manager di Studio.');
       }
+      window.Vault.addHistory({ t: Date.now(), base, type, ownerId, ids: Object.assign({}, state.ids) });
       resetProgressKeepRows();
     } catch (e) {
       log('Gagal: ' + e.message);
@@ -154,30 +155,15 @@ window.RobloxUpload = (function () {
     doneType = null; lastSig = '';
   }
 
-  // ---- Brankas akun: disimpan di localStorage browser ini saja (tidak pernah dikirim ke server) ----
-  const STORE = 'rsk.profiles', LAST = 'rsk.last';
-  const b64 = u => btoa(String.fromCharCode(...u));
-  const unb64 = t => Uint8Array.from(atob(t), c => c.charCodeAt(0));
-  const loadProfiles = () => { try { return JSON.parse(localStorage.getItem(STORE)) || []; } catch (e) { return []; } };
-  const saveProfiles = list => { try { localStorage.setItem(STORE, JSON.stringify(list)); return true; } catch (e) { return false; } };
-
-  async function aesKey(pass, salt) {
-    const m = await crypto.subtle.importKey('raw', new TextEncoder().encode(pass), 'PBKDF2', false, ['deriveKey']);
-    return crypto.subtle.deriveKey({ name: 'PBKDF2', salt, iterations: 200000, hash: 'SHA-256' }, m, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
-  }
-  async function encrypt(text, pass) {
-    const salt = crypto.getRandomValues(new Uint8Array(16)), iv = crypto.getRandomValues(new Uint8Array(12));
-    const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, await aesKey(pass, salt), new TextEncoder().encode(text));
-    return { salt: b64(salt), iv: b64(iv), data: b64(new Uint8Array(ct)) };
-  }
-  async function decrypt(enc, pass) {
-    const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: unb64(enc.iv) }, await aesKey(pass, unb64(enc.salt)), unb64(enc.data));
-    return new TextDecoder().decode(pt);
-  }
+  const { loadProfiles, saveProfiles, encrypt, decrypt } = window.Vault;
 
   function build(root, state, onIdsUpdated) {
     const det = mk('details', { className: 'group', open: true }, root);
     const sum = mk('summary', { textContent: 'Upload Langsung ke Roblox (Open Cloud)' }, det);
+    det.hidden = true;
+    const gate = mk('div', { className: 'card' }, root); gate.hidden = true;
+    mk('p', { textContent: 'Masuk dulu untuk upload langsung ke Roblox. Konversi panorama, preview, dan ekspor ZIP tetap bebas dipakai tanpa masuk.' }, gate);
+    const gb = mk('div', { className: 'row' }, gate); window.Auth.buttons(gb, false);
 
     const note = mk('p', { className: 'note' }, det);
     note.innerHTML = 'Butuh <a href="https://create.roblox.com/dashboard/credentials" target="_blank" rel="noopener">Open Cloud API Key</a> dengan permission <strong>Assets</strong> (Read + Write). API key dikirim ke endpoint proyek ini (<code>/api/roblox-create</code>), diteruskan langsung ke Roblox, dan tidak disimpan di server. Di browser, key hanya tersimpan kalau kamu menekan <strong>Simpan akun</strong>. Fitur ini butuh backend (jalan di Vercel), tidak jalan di hosting statis murni seperti GitHub Pages.';
@@ -252,8 +238,8 @@ window.RobloxUpload = (function () {
         if (p.enc) {
           if (!vaultPassInp.value) { log('Akun "' + p.label + '" terenkripsi: isi kata sandi brankas lalu tekan Pakai.'); return; }
           apiKeyInp.value = await decrypt(p.enc, vaultPassInp.value);
-        } else apiKeyInp.value = p.key || '';
-        localStorage.setItem(LAST, p.id);
+        } else if (p.key) apiKeyInp.value = p.key; else { log('Akun "' + p.label + '" belum punya API key di perangkat ini: tempel API key di bawah, lalu tekan Simpan akun.'); return; }
+        window.Vault.lastSet(p.id);
         log('Akun "' + p.label + '" dipakai.');
       } catch (e) { log('Kata sandi salah atau data rusak.'); }
     }
@@ -261,7 +247,7 @@ window.RobloxUpload = (function () {
     btnDel.addEventListener('click', () => {
       const id = vaultSel.value; if (!id) { log('Pilih akun yang mau dihapus.'); return; }
       saveProfiles(loadProfiles().filter(p => p.id !== id));
-      try { if (localStorage.getItem(LAST) === id) localStorage.removeItem(LAST); } catch (e) {}
+      if (window.Vault.lastGet() === id) window.Vault.lastClear();
       refreshVault(); log('Akun dihapus dari browser ini.');
     });
     btnSave.addEventListener('click', async () => {
@@ -278,14 +264,19 @@ window.RobloxUpload = (function () {
       const list = loadProfiles(), old = list.find(x => x.label === label);
       p.id = old ? old.id : String(Date.now());
       if (!saveProfiles(old ? list.map(x => x.id === old.id ? p : x) : list.concat(p))) { log('Gagal menyimpan (penyimpanan browser tidak tersedia).'); return; }
-      try { localStorage.setItem(LAST, p.id); } catch (e) {}
+      window.Vault.lastSet(p.id);
       refreshVault(p.id); log('Akun "' + label + '" disimpan' + (pass ? ' (terenkripsi).' : ' (tanpa enkripsi).'));
     });
 
-    let last = null; try { last = localStorage.getItem(LAST); } catch (e) {}
-    refreshVault(last);
-    const lp = loadProfiles().find(x => x.id === last);
-    if (lp) { if (lp.enc) { fill(lp); log('Akun "' + lp.label + '" tersimpan. Isi kata sandi brankas lalu tekan Pakai.'); } else useProfile(lp.id); }
+    window.Auth.ready.then(async user => {
+      if (!user) { gate.hidden = false; return; }
+      window.Vault.setUser(user.id); det.hidden = false;
+      await window.Vault.pull();
+      const last = window.Vault.lastGet();
+      refreshVault(last);
+      const lp = loadProfiles().find(x => x.id === last);
+      if (lp) { if (lp.enc) { fill(lp); log('Akun "' + lp.label + '" tersimpan. Isi kata sandi brankas lalu tekan Pakai.'); } else useProfile(lp.id); }
+    });
   }
 
   return { build };

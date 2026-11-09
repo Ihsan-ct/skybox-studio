@@ -3,9 +3,11 @@
 // serverless function). Browser yang mengatur jeda antar panggilan.
 
 import { guard } from './_guard.js';
+import { requireUser } from './_session.js';
 
 export default async function handler(req, res) {
   if (!guard(req, res)) return;
+  if (!requireUser(req, res)) return; // wajib login (Google/Discord)
   if (req.method !== 'GET') {
     res.status(405).json({ error: 'Method tidak didukung, gunakan GET.' });
     return;
