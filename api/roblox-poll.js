@@ -2,7 +2,10 @@
 // Satu panggilan = satu cek, tanpa loop sleep di server (hindari timeout
 // serverless function). Browser yang mengatur jeda antar panggilan.
 
+import { guard } from './_guard.js';
+
 export default async function handler(req, res) {
+  if (!guard(req, res)) return;
   if (req.method !== 'GET') {
     res.status(405).json({ error: 'Method tidak didukung, gunakan GET.' });
     return;

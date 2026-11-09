@@ -29,8 +29,10 @@ skybox-studio/
 │   └── main.js           # wiring UI + state aplikasi
 ├── api/
 │   ├── roblox-create.js  # Serverless Function: proxy buat asset (hindari CORS)
-│   └── roblox-poll.js    # Serverless Function: proxy cek status operation
+│   ├── roblox-poll.js    # Serverless Function: proxy cek status operation
+│   └── _guard.js         # tolak request lintas-situs + Cache-Control: no-store
 ├── upload-skybox.mjs     # CLI upload ke Roblox Open Cloud (alternatif tanpa backend)
+├── test-api.mjs          # cek proxy tanpa jaringan (npm test)
 ├── vercel.json
 ├── package.json
 └── LICENSE
@@ -48,15 +50,22 @@ python3 -m http.server 8080
 Lalu buka `http://localhost:8080` (atau port yang ditampilkan).
 
 ## Deployment Vercel & GitHub Pages
-- Vercel: Framework Preset "Other", Output Directory ".", `vercel.json` sudah set `cleanUrls` dan `framework: null`.
-- GitHub Pages: Deploy dari branch `main`, folder root.
+- Vercel: Framework Preset "Other", Output Directory ".", `vercel.json` sudah set `cleanUrls`, `framework: null`, `maxDuration` function, dan header keamanan dasar.
+- GitHub Pages: Deploy dari branch `main`, folder root (hanya konversi/ekspor; upload langsung tidak tersedia).
 
 ## Upload Langsung ke Roblox (dari browser)
-Di tab **Script Luau**, ada panel "Upload Langsung ke Roblox (Open Cloud)". Masukkan Open Cloud API Key (permission **Add assets**) dan User ID/Group ID, lalu klik **Upload ke Roblox** — 6 sisi dirender dan diunggah otomatis, Image ID langsung terisi di form script Luau.
+**Langkah singkat**
+1. Buat API Key di [Creator Dashboard > Credentials](https://create.roblox.com/dashboard/credentials) dengan permission **Assets > Add assets** (isi juga IP/akses sesuai kebutuhan).
+2. Buka situs yang di-deploy di Vercel, unggah panorama, lalu masuk ke tab **Script Luau** > panel "Upload Langsung ke Roblox".
+3. Isi API Key dan User ID (atau Group ID), klik **Upload ke Roblox**. Tiap sisi dirender, diunggah, dan Image ID langsung terisi di form script Luau begitu selesai.
 
-Ini jalan lewat 2 Serverless Function (`api/roblox-create.js` dan `api/roblox-poll.js`) karena Roblox Open Cloud API tidak mengizinkan request langsung dari browser (CORS diblokir). Request dari browser ke `/api/*` itu same-origin, lalu diteruskan server-to-server ke Roblox — API key tidak disimpan di mana pun, hanya diteruskan apa adanya per request.
+Ini jalan lewat 2 Serverless Function (`api/roblox-create.js`, `api/roblox-poll.js`) karena Roblox Open Cloud tidak mengizinkan request langsung dari browser (CORS). Browser memanggil `/api/*` (same-origin), lalu function meneruskannya server-to-server ke Roblox. API key hanya diteruskan per request, tidak disimpan. Request lintas-situs ditolak (`api/_guard.js`).
 
-**Keterbatasan:** fitur ini butuh backend (jalan di Vercel atau hosting lain yang mendukung Node serverless functions). **Tidak jalan di GitHub Pages** karena itu hosting statis murni tanpa backend — di sana, pakai cara skrip terminal di bawah ini sebagai gantinya.
+**Batas 4,5 MB.** Vercel membatasi body request function sampai 4,5 MB. Kalau PNG satu sisi lebih besar dari ±4,2 MB, aplikasi otomatis memperkecil resolusinya bertahap (minimum 512 px) dan mencatatnya di log. Kalau tetap tidak muat, pakai `upload-skybox.mjs`.
+
+**Kalau gagal di tengah jalan.** Sisi yang sudah berhasil tetap tersimpan dan ID-nya sudah terisi. Tekan **Upload ke Roblox** lagi untuk melanjutkan (operasi yang masih diproses/moderasi dicek ulang, bukan diunggah ulang). **Mulai dari awal** mengunggah semua sisi dari nol, misalnya setelah mengganti panorama.
+
+**Keterbatasan:** butuh backend (Vercel atau hosting lain yang mendukung Node serverless functions). **Tidak jalan di GitHub Pages**; di sana pakai skrip terminal di bawah.
 
 ## Skrip upload-skybox.mjs (alternatif via terminal)
 Gunakan kredensial `ROBLOX_API_KEY` untuk unggah 6 sisi langsung ke Open Cloud Assets API dari command line — cocok untuk otomasi/CI, atau kalau kamu deploy situsnya di hosting statis murni (GitHub Pages) yang tidak punya backend.
@@ -70,7 +79,7 @@ Catatan: Jika skybox tampil putih di game, salin Image ID dari Asset Manager di 
 
 ## Dependensi & Hash SRI
 - Three.js r128 (cdnjs): `sha512-dLxUelApnYxpLt6K2iomGngnHO83iUvZytA3YjDUCjT0HDOHKXnVYdf3hU4JjM8uEhxf9nD1/ey98U3t2vZ0qQ==`
-- JSZip 3.10.1 (cdnjs): `sha512-XMVd28F1oH/O71fKEHdDUCZhrMpU29vm493tVSh9SkK3QXNDEnUtLXAHIjMQlWTZ8797eiZeQmhy+z3Z555b7Q==`
+- JSZip 3.10.1 (cdnjs): `sha512-XMVd28F1oH/O71fzwBnV7HucLxVwtxf26XV8P4wPk26EDxuGZ91N8bsOttmnomcCD3CS5ZMRL50H0GgOHvegtg==`
 
 Kalau kamu meng-upgrade versi library ini, pastikan hash SRI di `index.html` diperbarui juga (ambil dari [cdnjs.com](https://cdnjs.com)), kalau tidak browser akan memblokir script-nya tanpa error yang terlihat oleh user.
 

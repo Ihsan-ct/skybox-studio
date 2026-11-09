@@ -4,7 +4,13 @@
 // server-to-server ke Roblox. API key TIDAK disimpan di mana pun di server ini —
 // hanya diteruskan apa adanya dari header request ke header request berikutnya.
 
+import { guard } from './_guard.js';
+
+// Vercel membatasi body request function sampai 4,5 MB (413 sebelum kode ini jalan).
+const MAX_BYTES = 4.4 * 1024 * 1024;
+
 export default async function handler(req, res) {
+  if (!guard(req, res)) return;
   if (req.method !== 'POST') {
     res.status(405).json({ error: 'Method tidak didukung, gunakan POST.' });
     return;
@@ -37,7 +43,12 @@ export default async function handler(req, res) {
   let buf;
   try {
     const chunks = [];
-    for await (const chunk of req) chunks.push(chunk);
+    let n = 0;
+    for await (const chunk of req) {
+      n += chunk.length;
+      if (n > MAX_BYTES) { res.status(413).json({ error: 'Gambar lebih dari 4,4 MB (batas body Vercel).' }); return; }
+      chunks.push(chunk);
+    }
     buf = Buffer.concat(chunks);
   } catch (e) {
     res.status(400).json({ error: 'Gagal membaca body request.' });
@@ -48,8 +59,8 @@ export default async function handler(req, res) {
     res.status(400).json({ error: 'Body bukan berkas PNG yang valid.' });
     return;
   }
-  if (buf.length > 20 * 1024 * 1024) {
-    res.status(400).json({ error: 'Gambar lebih dari 20 MB (batas Open Cloud).' });
+  if (buf.length > MAX_BYTES) {
+    res.status(413).json({ error: 'Gambar lebih dari 4,4 MB (batas body Vercel).' });
     return;
   }
 

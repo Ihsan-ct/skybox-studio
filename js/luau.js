@@ -1,4 +1,4 @@
-﻿"use strict";
+"use strict";
 window.LuauGen = (function () {
   const FACES = window.GLConvert.FACES;
 
