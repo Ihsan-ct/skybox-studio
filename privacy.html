@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kebijakan Privasi · Roblox Skybox Studio</title>
+  <meta name="description" content="Kebijakan privasi Roblox Skybox Studio: data apa yang dipakai saat login Google/Discord dan upload ke Roblox.">
+  <link rel="stylesheet" href="css/app.css">
+  <style>
+    .doc { max-width: 760px; margin: 0 auto; padding: 16px 16px 40px; }
+    .doc h1 { font-size: 24px; } .doc h2 { font-size: 17px; margin-top: 22px; }
+  </style>
+</head>
+<body>
+<header><a href="/">← Roblox Skybox Studio</a></header>
+<main class="doc" id="main">
+  <h1>Kebijakan Privasi</h1>
+  <p>Terakhir diperbarui: 9 November 2026. Roblox Skybox Studio adalah alat gratis, bersumber terbuka (<a href="https://github.com/Ihsan-ct/skybox-studio" rel="noopener">GitHub</a>), untuk mengubah panorama 360° menjadi skybox Roblox.</p>
+
+  <h2>Data yang diproses di browser Anda</h2>
+  <p>Konversi panorama, pratinjau, dan ekspor ZIP berjalan sepenuhnya di browser. Gambar Anda tidak diunggah ke server kami.</p>
+
+  <h2>Login Google atau Discord</h2>
+  <p>Login hanya diperlukan untuk upload ke Roblox. Kami meminta akses minimal (Google: <code>openid profile</code>; Discord: <code>identify</code>) dan hanya menerima ID akun, nama tampilan, dan foto profil. Kami tidak meminta atau menyimpan alamat email, kata sandi, ataupun token akses Google/Discord. Data ini disimpan di cookie sesi bertanda tangan (HttpOnly, 7 hari) dan dihapus saat Anda klik Keluar.</p>
+
+  <h2>API key Roblox</h2>
+  <p>API key hanya diteruskan sekali per permintaan ke Roblox melalui server proxy kami. Key tidak disimpan dan tidak dicatat di server atau database. Di browser Anda, key disimpan lokal (terenkripsi AES-GCM jika Anda mengisi kata sandi brankas).</p>
+
+  <h2>Sinkronisasi (opsional)</h2>
+  <p>Bila diaktifkan, kami menyimpan di database (Upstash Redis) ID akun login, nama tampilan, serta metadata profil Roblox (nama profil, User/Group ID, awalan nama aset) dan riwayat 20 upload terakhir (waktu, nama, ID aset). Tanpa API key.</p>
+
+  <h2>Pihak ketiga</h2>
+  <p>Situs di-host di Vercel; login lewat Google dan Discord; upload diteruskan ke Roblox Open Cloud; database oleh Upstash. Masing-masing memiliki kebijakan privasinya sendiri.</p>
+
+  <h2>Hak Anda</h2>
+  <p>Anda dapat menghapus akun Roblox tersimpan dan riwayat dari Dashboard kapan saja, atau meminta penghapusan data sinkronisasi dengan membuka isu di GitHub kami.</p>
+
+  <h2>Kontak</h2>
+  <p>Pertanyaan: buka isu di <a href="https://github.com/Ihsan-ct/skybox-studio/issues" rel="noopener">GitHub</a>.</p>
+</main>
+</body>
+</html>
