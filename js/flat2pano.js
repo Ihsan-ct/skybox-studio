@@ -150,6 +150,9 @@ window.Flat2Pano = (function () {
     const pitch = (o.pitch || 0) * PI / 180;
     const edge = Math.min(0.4, Math.max(0, (o.edge == null ? 10 : o.edge) / 100));
     const maxW = o.maxW || 4096;
+    const fill = o.fill === 'halus' ? 'halus' : 'cermin';
+    // Refleksi segitiga ke [0,1] - mengisi zona di luar gambar (mode cermin).
+    const tri01 = t => { const m = ((t % 2) + 2) % 2; return 1 - Math.abs(m - 1); };
 
     // Lebar panorama: usahakan kerapatan piksel gambar asli terjaga, batasi 2048..maxW.
     let W = Math.round(sw * (2 * PI) / fov);
@@ -166,13 +169,80 @@ window.Flat2Pano = (function () {
     const thv = th * ph / pw;                  // setengah tinggi
     const cp = Math.cos(pitch), sp = Math.sin(pitch);
 
-    // Peta penutup & warna berresolusi rendah untuk push-pull
+    // Cakupan vertikal gambar terhadap latitude (dipakai refleksi mode cermin)
+    const vfov = 2 * Math.atan(thv);
+    const latTop = pitch + vfov / 2;
+
+    // ── Peta dasar (fillMap) per mode ──
+    // cermin: panel asli/cermin bergantian menutup 360 + tepi atas/bawah ditarik,
+    //         lalu di-blur berat -> wash warna sadar-arah tanpa artefak duplikat.
+    // halus : push-pull warna dari tepi gambar (perilaku lama).
+    let fillMap = null, rowAvg = null;
     const LW = 256, LH = 128;
-    const base = new Float32Array(LW * LH * 4);
-    const tmp = [0, 0, 0];
-    const lowSrcW = Math.min(pw, 192), lowSrcH = Math.max(1, Math.round(ph * lowSrcW / pw));
-    const lowPx = getPixels(src, lowSrcW, lowSrcH);
-    const low = (function () {
+    if (fill === 'cermin') {
+      const nPanel = Math.ceil((2 * PI) / fov);
+      const panelW = (2 * PI) / nPanel;
+      const tile = document.createElement('canvas');
+      tile.width = W; tile.height = H;
+      const tctx = tile.getContext('2d');
+      const timg = tctx.createImageData(W, H);
+      const td = timg.data;
+      const vfov2 = 2 * Math.atan(thv);
+      const latT2 = pitch + vfov2 / 2;
+      for (let y = 0; y < H; y++) {
+        const lat = PI / 2 - (y + 0.5) / H * PI;
+        const vh = Math.min(1, Math.max(0, (latT2 - lat) / vfov2));
+        const sy = Math.min(ph - 1, Math.max(0, vh * (ph - 1)));
+        const y0 = sy | 0, y1 = Math.min(ph - 1, y0 + 1), fy = sy - y0;
+        for (let x = 0; x < W; x++) {
+          const a = (x + 0.5) / W * nPanel;
+          const p = Math.floor(a);
+          const t = a - p;
+          const xh = (p % 2 === 0) ? t : 1 - t;
+          const sx = Math.min(pw - 1, Math.max(0, xh * (pw - 1)));
+          const x0 = sx | 0, x1 = Math.min(pw - 1, x0 + 1), fx = sx - x0;
+          const i00 = (y0 * pw + x0) * 4, i10 = (y0 * pw + x1) * 4;
+          const i01 = (y1 * pw + x0) * 4, i11 = (y1 * pw + x1) * 4;
+          const w00 = (1 - fx) * (1 - fy), w10 = fx * (1 - fy), w01 = (1 - fx) * fy, w11 = fx * fy;
+          const o4 = (y * W + x) * 4;
+          for (let ch = 0; ch < 3; ch++) {
+            td[o4 + ch] =
+              px[i00 + ch] * w00 + px[i10 + ch] * w10 +
+              px[i01 + ch] * w01 + px[i11 + ch] * w11;
+          }
+          td[o4 + 3] = 255;
+        }
+      }
+      tctx.putImageData(timg, 0, 0);
+      const fcan = document.createElement('canvas');
+      fcan.width = W; fcan.height = H;
+      const fctx = fcan.getContext('2d');
+      try { fctx.filter = 'blur(' + Math.max(24, Math.round(W / 42)) + 'px)'; } catch (e) {}
+      fctx.drawImage(tile, 0, 0);
+      const fdata = fctx.getImageData(0, 0, W, H).data;
+      fillMap = new Float32Array(LW * LH * 3);
+      for (let y = 0; y < LH; y++) {
+        const syv = Math.min(H - 1, Math.max(0, (y + 0.5) * H / LH - 0.5));
+        const yy0 = syv | 0, yy1 = Math.min(H - 1, yy0 + 1), ty = syv - yy0;
+        for (let x = 0; x < LW; x++) {
+          const sxv = Math.min(W - 1, Math.max(0, (x + 0.5) * W / LW - 0.5));
+          const xx0 = sxv | 0, xx1 = Math.min(W - 1, xx0 + 1), tx = sxv - xx0;
+          const q00 = (yy0 * W + xx0) * 4, q10 = (yy0 * W + xx1) * 4;
+          const q01 = (yy1 * W + xx0) * 4, q11 = (yy1 * W + xx1) * 4;
+          const w00 = (1 - tx) * (1 - ty), w10 = tx * (1 - ty), w01 = (1 - tx) * ty, w11 = tx * ty;
+          const o3 = (y * LW + x) * 3;
+          for (let ch = 0; ch < 3; ch++) {
+            fillMap[o3 + ch] =
+              fdata[q00 + ch] * w00 + fdata[q10 + ch] * w10 +
+              fdata[q01 + ch] * w01 + fdata[q11 + ch] * w11;
+          }
+        }
+      }
+    } else {
+      const base = new Float32Array(LW * LH * 4);
+      const tmp = [0, 0, 0];
+      const lowSrcW = Math.min(pw, 192), lowSrcH = Math.max(1, Math.round(ph * lowSrcW / pw));
+      const lowPx = getPixels(src, lowSrcW, lowSrcH);
       for (let y = 0; y < LH; y++) {
         const lat = PI / 2 - (y + 0.5) / LH * PI;
         const sl = Math.sin(lat), cl = Math.cos(lat);
@@ -183,26 +253,23 @@ window.Flat2Pano = (function () {
           if (zz <= 0.02) continue;
           const u = dx / zz / th * 0.5 + 0.5, v = 0.5 - yy / zz / thv * 0.5;
           if (u < 0 || u > 1 || v < 0 || v > 1) continue;
-          // sisakan tepi: ambil warna agak ke dalam supaya tepi gambar tidak "bocor"
           sampleU8(lowPx, lowSrcW, lowSrcH, u * (lowSrcW - 1), v * (lowSrcH - 1), tmp);
           const o4 = (y * LW + x) * 4;
           base[o4] = tmp[0]; base[o4 + 1] = tmp[1]; base[o4 + 2] = tmp[2]; base[o4 + 3] = 1;
         }
       }
-      return base;
-    })();
-
-    let fill = pushPull(low, LW, LH);
-    fill = blurRGB(fill, LW, LH, 9, 5, 2);
-
-    // Rata-rata baris di dekat kutub (untuk meredam pusaran)
-    const rowAvg = new Float32Array(LH * 3);
+      fillMap = pushPull(base, LW, LH);
+      fillMap = blurRGB(fillMap, LW, LH, 9, 5, 2);
+    }
+    // Rata-rata baris (meredam pusaran / menyetel kutub)
+    rowAvg = new Float32Array(LH * 3);
     for (let y = 0; y < LH; y++) {
       let r = 0, g = 0, b = 0;
-      for (let x = 0; x < LW; x++) { r += fill[(y * LW + x) * 3]; g += fill[(y * LW + x) * 3 + 1]; b += fill[(y * LW + x) * 3 + 2]; }
+      for (let x = 0; x < LW; x++) { r += fillMap[(y * LW + x) * 3]; g += fillMap[(y * LW + x) * 3 + 1]; b += fillMap[(y * LW + x) * 3 + 2]; }
       rowAvg[y * 3] = r / LW; rowAvg[y * 3 + 1] = g / LW; rowAvg[y * 3 + 2] = b / LW;
     }
 
+    // --- Render akhir ---
     // --- Render akhir ---
     const out = document.createElement('canvas');
     out.width = W; out.height = H;
@@ -218,12 +285,12 @@ window.Flat2Pano = (function () {
 
     const poleStart = 62 * PI / 180, poleEnd = 88 * PI / 180;
     const s = [0, 0, 0];
+    const bas = [0, 0, 0];
 
     for (let y = 0; y < H; y++) {
       const lat = PI / 2 - (y + 0.5) / H * PI;
       const sl = Math.sin(lat), cl = Math.cos(lat);
 
-      // koordinat baris pada peta fill (bilinear vertikal)
       const fyv = Math.min(LH - 1, Math.max(0, (y + 0.5) * LH / H - 0.5));
       const fy0 = fyv | 0, fy1 = Math.min(LH - 1, fy0 + 1), fty = fyv - fy0;
       const pw_ = smoothstep(poleStart, poleEnd, Math.abs(lat));
@@ -233,15 +300,14 @@ window.Flat2Pano = (function () {
       const avB = rowAvg[ra0 + 2] * (1 - fty) + rowAvg[ra1 + 2] * fty;
 
       for (let x = 0; x < W; x++) {
-        // warna fill (bilinear, wrap)
         const fxv = (x + 0.5) * LW / W - 0.5;
         const fx0f = Math.floor(fxv), ftx = fxv - fx0f;
         const fa = ((fx0f % LW) + LW) % LW, fb = (fa + 1) % LW;
         const i00 = (fy0 * LW + fa) * 3, i10 = (fy0 * LW + fb) * 3, i01 = (fy1 * LW + fa) * 3, i11 = (fy1 * LW + fb) * 3;
         const w00 = (1 - ftx) * (1 - fty), w10 = ftx * (1 - fty), w01 = (1 - ftx) * fty, w11 = ftx * fty;
-        let r = fill[i00] * w00 + fill[i10] * w10 + fill[i01] * w01 + fill[i11] * w11;
-        let g = fill[i00 + 1] * w00 + fill[i10 + 1] * w10 + fill[i01 + 1] * w01 + fill[i11 + 1] * w11;
-        let b = fill[i00 + 2] * w00 + fill[i10 + 2] * w10 + fill[i01 + 2] * w01 + fill[i11 + 2] * w11;
+        let r = fillMap[i00] * w00 + fillMap[i10] * w10 + fillMap[i01] * w01 + fillMap[i11] * w11;
+        let g = fillMap[i00 + 1] * w00 + fillMap[i10 + 1] * w10 + fillMap[i01 + 1] * w01 + fillMap[i11 + 1] * w11;
+        let b = fillMap[i00 + 2] * w00 + fillMap[i10 + 2] * w10 + fillMap[i01 + 2] * w01 + fillMap[i11 + 2] * w11;
         if (pw_ > 0) { r += (avR - r) * pw_; g += (avG - g) * pw_; b += (avB - b) * pw_; }
 
         // lapisan gambar tajam (perspektif)
@@ -270,56 +336,5 @@ window.Flat2Pano = (function () {
     return out;
   }
 
-  // ── Mode cermin: gambar depan + refleksi ke seluruh bola langit ──
-  // Pola yang sama dipakai converter lain: tepi kiri-kanan dicerminkan agar
-  // menyambung, tepi atas/bawah dipantulkan sampai nutup di kutub. Hasilnya
-  // langit terisi tekstur penuh (bagus untuk awan/langit malam).
-  function tri(t) { const m = ((t % 2) + 2) % 2; return 1 - Math.abs(m - 1); }
-
-  function convertMirror(src, sw, sh, o) {
-    const maxW = o.maxW || 4096;
-    let W = Math.max(1024, Math.min(maxW, 2048));
-    W = Math.round(W / 2) * 2;
-    const H = W / 2;
-
-    const sc = Math.min(1, 4096 / Math.max(sw, sh));
-    const pw = Math.max(1, Math.round(sw * sc)), ph = Math.max(1, Math.round(sh * sc));
-    const px = getPixels(src, pw, ph);
-
-    const out = document.createElement('canvas');
-    out.width = W; out.height = H;
-    const og = out.getContext('2d');
-    const img = og.createImageData(W, H);
-    const od = img.data;
-
-    // Pola TC/NX: [gambar asli | versi cermin] -> tepi kiri-kanan otomatis menyambung,
-    // lalu seluruhnya direntangkan vertikal sampai nutup di kutub.
-    for (let y = 0; y < H; y++) {
-      const syf = Math.min(ph - 1, Math.max(0, (y / H) * ph));
-      const y0 = syf | 0, y1 = Math.min(ph - 1, y0 + 1), fy = syf - y0;
-      for (let x = 0; x < W; x++) {
-        // u 0..0.5 = gambar asli, u 0.5..1 = cermin horizontal
-        let u = x / W;
-        let sx;
-        if (u < 0.5) sx = u * 2 * pw;
-        else sx = (1 - u) * 2 * pw;
-        sx = Math.min(pw - 1, Math.max(0, sx));
-        const x0 = sx | 0, x1 = Math.min(pw - 1, x0 + 1), fx = sx - x0;
-        const i00 = (y0 * pw + x0) * 4, i10 = (y0 * pw + x1) * 4;
-        const i01 = (y1 * pw + x0) * 4, i11 = (y1 * pw + x1) * 4;
-        const w00 = (1 - fx) * (1 - fy), w10 = fx * (1 - fy), w01 = (1 - fx) * fy, w11 = fx * fy;
-        const o4 = (y * W + x) * 4;
-        for (let ch = 0; ch < 3; ch++) {
-          od[o4 + ch] =
-            px[i00 + ch] * w00 + px[i10 + ch] * w10 +
-            px[i01 + ch] * w01 + px[i11 + ch] * w11;
-        }
-        od[o4 + 3] = 255;
-      }
-    }
-    og.putImageData(img, 0, 0);
-    return out;
-  }
-
-  return { convert, convertMirror };
+  return { convert };
 })();

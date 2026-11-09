@@ -331,9 +331,7 @@
         const optPano = {
           fov: flat.fov, pitch: flatPitch(), edge: flat.edge, maxW: Math.min(4096, GL.getMaxTex())
         };
-        const c = flat.fill === 'cermin'
-          ? window.Flat2Pano.convertMirror(flat.src, flat.w, flat.h, optPano)
-          : window.Flat2Pano.convert(flat.src, flat.w, flat.h, optPano);
+        const c = window.Flat2Pano.convert(flat.src, flat.w, flat.h, Object.assign(optPano, { fill: flat.fill }));
         if (token !== flatToken) return;
         setImage(c, c.width, c.height, flat.name + ' [2D→360°]', flat.size, { skipRatioCheck: true });
         note.textContent = 'Gambar ditempatkan di depan kamera tanpa melar, sisanya diisi otomatis dari warna gambar dan menyambung 360°.';
