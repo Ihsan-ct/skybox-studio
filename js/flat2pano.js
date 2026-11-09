@@ -217,7 +217,7 @@ window.Flat2Pano = (function () {
       const fcan = document.createElement('canvas');
       fcan.width = W; fcan.height = H;
       const fctx = fcan.getContext('2d');
-      try { fctx.filter = 'blur(' + Math.max(24, Math.round(W / 42)) + 'px)'; } catch (e) {}
+      try { fctx.filter = 'blur(' + Math.max(60, Math.round(W / 20)) + 'px)'; } catch (e) {}
       fctx.drawImage(tile, 0, 0);
       const fdata = fctx.getImageData(0, 0, W, H).data;
       fillMap = new Float32Array(LW * LH * 3);
