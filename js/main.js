@@ -495,7 +495,7 @@
     setImage(c, c.width, c.height, 'Gambar Uji', null, { skipRatioCheck: true });
   });
 
-  const tabNames = ['cross', '3d', 'luau', 'stitch'];
+  const tabNames = ['cross', '3d', 'luau', 'rbx', 'stitch'];
   window.Stitcher.build($('panel-stitch'));
   if (window.RobloxUpload) window.RobloxUpload.build($('rbxUploadRoot'), state, refreshLuau);
   function switchTab(name) {

@@ -56,7 +56,7 @@ Lalu buka `http://localhost:8080` (atau port yang ditampilkan).
 ## Upload Langsung ke Roblox (dari browser)
 **Langkah singkat**
 1. Buat API Key di [Creator Dashboard > Credentials](https://create.roblox.com/dashboard/credentials) dengan permission **Assets > Add assets** (isi juga IP/akses sesuai kebutuhan).
-2. Buka situs yang di-deploy di Vercel, unggah panorama, lalu masuk ke tab **Script Luau** > panel "Upload Langsung ke Roblox".
+2. Buka situs yang di-deploy di Vercel, unggah panorama, lalu buka tab **Upload Roblox**.
 3. Isi API Key dan User ID (atau Group ID), klik **Upload ke Roblox**. Tiap sisi dirender, diunggah, dan Image ID langsung terisi di form script Luau begitu selesai.
 
 Ini jalan lewat 2 Serverless Function (`api/roblox-create.js`, `api/roblox-poll.js`) karena Roblox Open Cloud tidak mengizinkan request langsung dari browser (CORS). Browser memanggil `/api/*` (same-origin), lalu function meneruskannya server-to-server ke Roblox. API key hanya diteruskan per request, tidak disimpan. Request lintas-situs ditolak (`api/_guard.js`).

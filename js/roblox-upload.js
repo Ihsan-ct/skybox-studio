@@ -155,7 +155,7 @@ window.RobloxUpload = (function () {
   }
 
   function build(root, state, onIdsUpdated) {
-    const det = mk('details', { className: 'group' }, root);
+    const det = mk('details', { className: 'group', open: true }, root);
     const sum = mk('summary', { textContent: 'Upload Langsung ke Roblox (Open Cloud)' }, det);
 
     const note = mk('p', { className: 'note' }, det);
