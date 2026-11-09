@@ -42,7 +42,7 @@
   const saved = loadPrefs();
   const DEFAULTS = {
     yaw: 0, pitch: 0, horizon: 0, fadeHorizon: saved.fadeHorizon || 0, fadeColor: saved.fadeColor || '#808080',
-    brightness: 0, contrast: 0, saturation: 100, warmth: 0, seamBlend: 8,
+    brightness: 0, contrast: 0, saturation: 100, warmth: 0, seamBlend: 8, fadeTop: 0, fadeTopColor: '#0a1030',
     rotUp: (typeof saved.rotUp === 'number') ? saved.rotUp : 0,
     rotDn: (typeof saved.rotDn === 'number') ? saved.rotDn : 0,
     flipH: false,
@@ -340,6 +340,14 @@
   fadeColorWrap.appendChild(fadeColorLab); fadeColorWrap.appendChild(fadeColorInp);
   $('grpPos').appendChild(fadeColorWrap);
 
+  addSlider($('grpPos'), 'fadeTop', 'Fade Atas (kutub)', 0, 60, 1, '°');
+  const fadeTopWrap = document.createElement('div'); fadeTopWrap.className = 'color-picker';
+  const fadeTopLab = document.createElement('label'); fadeTopLab.textContent = 'Warna Fade Atas'; fadeTopLab.htmlFor = 'fadeTopColor';
+  const fadeTopInp = document.createElement('input'); fadeTopInp.type = 'color'; fadeTopInp.id = 'fadeTopColor'; fadeTopInp.value = state.fadeTopColor;
+  fadeTopInp.addEventListener('input', () => { state.fadeTopColor = fadeTopInp.value; requestRender(); });
+  fadeTopWrap.appendChild(fadeTopLab); fadeTopWrap.appendChild(fadeTopInp);
+  $('grpPos').appendChild(fadeTopWrap);
+
   addSlider($('grpColor'), 'brightness', 'Brightness', -100, 100, 1, '');
   addSlider($('grpColor'), 'contrast', 'Contrast', -100, 100, 1, '');
   addSlider($('grpColor'), 'saturation', 'Saturation', 0, 200, 1, '%');
@@ -391,6 +399,7 @@
     if (g === 'pos') {
       setSlider('yaw', 0); setSlider('pitch', 0); setSlider('horizon', 0); setSlider('fadeHorizon', 0); setSlider('seamBlend', 8);
       state.fadeColor = '#808080'; fadeColorInp.value = '#808080';
+      setSlider('fadeTop', 0); state.fadeTopColor = '#0a1030'; fadeTopInp.value = '#0a1030';
     }
     if (g === 'color') {
       setSlider('brightness', 0); setSlider('contrast', 0); setSlider('saturation', 100); setSlider('warmth', 0);

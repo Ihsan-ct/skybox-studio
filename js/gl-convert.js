@@ -27,6 +27,7 @@ window.GLConvert = (function () {
     'uniform float uBri; uniform float uCon; uniform float uSat;',
     'uniform float uHorizon; uniform float uWarmth;',
     'uniform float uFadeWidth; uniform vec3 uFadeColor; uniform float uSeam;',
+    'uniform float uFadeTop; uniform vec3 uFadeTopColor;',
     'const float PI = 3.14159265359;',
     'void main(){',
     '  vec2 p = gl_FragCoord.xy / uSize * 2.0 - 1.0;',
@@ -48,6 +49,10 @@ window.GLConvert = (function () {
     '    float t = clamp(-lat / uFadeWidth, 0.0, 1.0);',
     '    t = smoothstep(0.0, 1.0, t);',
     '    c = mix(c, uFadeColor, t);',
+    '  }',
+    '  if (uFadeTop > 0.001 && lat > 0.0) {',
+    '    float tt = smoothstep(PI * 0.5 - uFadeTop, PI * 0.5, lat);',
+    '    c = mix(c, uFadeTopColor, tt);',
     '  }',
     '  c += uBri;',
     '  c = (c - 0.5) * (1.0 + uCon) + 0.5;',
@@ -77,7 +82,7 @@ window.GLConvert = (function () {
     const a = gl.getAttribLocation(prog, 'aPos');
     gl.enableVertexAttribArray(a);
     gl.vertexAttribPointer(a, 2, gl.FLOAT, false, 0, 0);
-    ['uTex', 'uSize', 'uFwd', 'uRight', 'uUp', 'uRot', 'uYaw', 'uPitch', 'uFlip', 'uBri', 'uCon', 'uSat', 'uHorizon', 'uWarmth', 'uFadeWidth', 'uFadeColor', 'uSeam']
+    ['uTex', 'uSize', 'uFwd', 'uRight', 'uUp', 'uRot', 'uYaw', 'uPitch', 'uFlip', 'uBri', 'uCon', 'uSat', 'uHorizon', 'uWarmth', 'uFadeWidth', 'uFadeColor', 'uSeam', 'uFadeTop', 'uFadeTopColor']
       .forEach(n => loc[n] = gl.getUniformLocation(prog, n));
     maxTex = gl.getParameter(gl.MAX_TEXTURE_SIZE) || 4096;
   }
@@ -169,6 +174,8 @@ window.GLConvert = (function () {
     gl.uniform1f(loc.uWarmth, (state.warmth || 0) / 100);
     gl.uniform1f(loc.uFadeWidth, ((state.fadeHorizon || 0) * PI / 180));
     gl.uniform3fv(loc.uFadeColor, hexToRgb(state.fadeColor));
+    gl.uniform1f(loc.uFadeTop, (state.fadeTop || 0) * PI / 180);
+    gl.uniform3fv(loc.uFadeTopColor, hexToRgb(state.fadeTopColor));
     gl.uniform1f(loc.uSeam, (state.seamBlend || 0) / 100);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
   }
