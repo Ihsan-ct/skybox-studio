@@ -302,7 +302,7 @@
 
 
   // ---------- Gambar 2D biasa -> panorama 360° otomatis ----------
-  const flat = { src: null, w: 0, h: 0, name: '', size: null, mode: '2d', kind: 'scene', fov: 100, offset: 0, edge: 18, fill: 'cermin' };
+  const flat = { src: null, w: 0, h: 0, name: '', size: null, mode: '2d', kind: 'scene', fov: 100, offset: 0, edge: 18, fill: 'cermin', smooth: 30 };
   let flatTimer = null, flatToken = 0;
 
   function flatPitch() {
@@ -319,7 +319,14 @@
   function applyFlat() {
     if (!flat.src) return;
     if (flat.mode === 'pano') {
-      setImage(flat.src, flat.w, flat.h, flat.name, flat.size, { skipRatioCheck: true });
+      let src = flat.src, w = flat.w, h = flat.h;
+      if (flat.smooth > 0 && window.Flat2Pano.smoothPoles) {
+        const c = document.createElement('canvas'); c.width = w; c.height = h;
+        c.getContext('2d').drawImage(flat.src, 0, 0, w, h);
+        window.Flat2Pano.smoothPoles(c, 0.12, flat.smooth / 100);
+        src = c;
+      }
+      setImage(src, w, h, flat.name, flat.size, { skipRatioCheck: true });
       return;
     }
     const token = ++flatToken;
@@ -405,8 +412,14 @@
   function syncFlatUI() {
     refreshMode(); refreshKind();
     $('flatCtl').hidden = flat.mode !== '2d';
+    $('grpPanoCtl').hidden = flat.mode !== 'pano';
   }
   $('flatFill').addEventListener('change', e => { flat.fill = e.target.value; scheduleFlat(); });
+  $('s_polesmooth').addEventListener('input', e => {
+    flat.smooth = Number(e.target.value);
+    $('out_polesmooth').textContent = flat.smooth + '%';
+    if (flat.mode === 'pano') scheduleFlat();
+  });
 
   window.addEventListener('paste', e => {
     if (e.clipboardData && e.clipboardData.items) {

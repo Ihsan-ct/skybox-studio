@@ -336,5 +336,32 @@ window.Flat2Pano = (function () {
     return out;
   }
 
-  return { convert };
+  // Menghaluskan pita atas & bawah kanvas (kutub equirectangular) secara bertahap —
+  // meniru "Rapikan Atas & Bawah": makin dekat kutub, makin blur.
+  function smoothPoles(canvas, bandFrac, s01) {
+    if (s01 <= 0) return;
+    const W = canvas.width, H = canvas.height;
+    const B = Math.max(8, Math.round(H * bandFrac));
+    const ctx = canvas.getContext('2d');
+    const slices = 8;
+    const sliceH = Math.max(2, Math.round(B / slices));
+    for (let i = 0; i < slices; i++) {
+      const blurPx = Math.round((slices - i) / slices * 26 * s01);
+      // atas
+      ctx.save();
+      ctx.beginPath(); ctx.rect(0, i * sliceH, W, sliceH + 2); ctx.clip();
+      ctx.filter = 'blur(' + blurPx + 'px)';
+      ctx.drawImage(canvas, 0, 0);
+      ctx.restore();
+      // bawah
+      ctx.save();
+      ctx.beginPath(); ctx.rect(0, H - (i + 1) * sliceH, W, sliceH + 2); ctx.clip();
+      ctx.filter = 'blur(' + blurPx + 'px)';
+      ctx.drawImage(canvas, 0, 0);
+      ctx.restore();
+    }
+    ctx.filter = 'none';
+  }
+
+  return { convert, smoothPoles };
 })();
