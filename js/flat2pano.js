@@ -221,6 +221,23 @@ window.Flat2Pano = (function () {
       fctx.drawImage(tile, 0, 0);
       const fdata = fctx.getImageData(0, 0, W, H).data;
       fillMap = new Float32Array(LW * LH * 3);
+      for (let y = 0; y < LH; y++) {
+        const syv = Math.min(H - 1, Math.max(0, (y + 0.5) * H / LH - 0.5));
+        const yy0 = syv | 0, yy1 = Math.min(H - 1, yy0 + 1), ty = syv - yy0;
+        for (let x = 0; x < LW; x++) {
+          const sxv = Math.min(W - 1, Math.max(0, (x + 0.5) * W / LW - 0.5));
+          const xx0 = sxv | 0, xx1 = Math.min(W - 1, xx0 + 1), tx = sxv - xx0;
+          const q00 = (yy0 * W + xx0) * 4, q10 = (yy0 * W + xx1) * 4;
+          const q01 = (yy1 * W + xx0) * 4, q11 = (yy1 * W + xx1) * 4;
+          const w00 = (1 - tx) * (1 - ty), w10 = tx * (1 - ty), w01 = (1 - tx) * ty, w11 = tx * ty;
+          const o3 = (y * LW + x) * 3;
+          for (let ch = 0; ch < 3; ch++) {
+            fillMap[o3 + ch] =
+              fdata[q00 + ch] * w00 + fdata[q10 + ch] * w10 +
+              fdata[q01 + ch] * w01 + fdata[q11 + ch] * w11;
+          }
+        }
+      }
       // Hybrid: gabungkan push-pull (warna yang mengikuti struktur gambar) dengan
       // mirror wash (warna tepi yang stabil). Ini tetap murni pemrosesan piksel lokal.
       if (fill === 'hybrid') {
@@ -251,24 +268,6 @@ window.Flat2Pano = (function () {
         // warna kosong yang terlalu rata dan membantu kesinambungan 360°.
         for (let i = 0; i < fillMap.length; i++) {
           fillMap[i] = pushed[i] * 0.68 + fillMap[i] * 0.32;
-        }
-      }
-
-      for (let y = 0; y < LH; y++) {
-        const syv = Math.min(H - 1, Math.max(0, (y + 0.5) * H / LH - 0.5));
-        const yy0 = syv | 0, yy1 = Math.min(H - 1, yy0 + 1), ty = syv - yy0;
-        for (let x = 0; x < LW; x++) {
-          const sxv = Math.min(W - 1, Math.max(0, (x + 0.5) * W / LW - 0.5));
-          const xx0 = sxv | 0, xx1 = Math.min(W - 1, xx0 + 1), tx = sxv - xx0;
-          const q00 = (yy0 * W + xx0) * 4, q10 = (yy0 * W + xx1) * 4;
-          const q01 = (yy1 * W + xx0) * 4, q11 = (yy1 * W + xx1) * 4;
-          const w00 = (1 - tx) * (1 - ty), w10 = tx * (1 - ty), w01 = (1 - tx) * ty, w11 = tx * ty;
-          const o3 = (y * LW + x) * 3;
-          for (let ch = 0; ch < 3; ch++) {
-            fillMap[o3 + ch] =
-              fdata[q00 + ch] * w00 + fdata[q10 + ch] * w10 +
-              fdata[q01 + ch] * w01 + fdata[q11 + ch] * w11;
-          }
         }
       }
     } else {
