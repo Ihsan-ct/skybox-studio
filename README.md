@@ -171,7 +171,7 @@ MIT — lihat [LICENSE](LICENSE).
 
 ## Gambar 2D biasa → skybox (otomatis)
 
-Pengguna cukup mengunggah gambar biasa (foto, render, atau hasil AI berbentuk persegi panjang).
+Pengguna cukup mengunggah gambar biasa (foto, render, atau gambar biasa berbentuk persegi panjang).
 Jika rasionya bukan 2:1, Studio otomatis mengubahnya menjadi panorama 360° (`js/flat2pano.js`):
 gambar ditempatkan di depan kamera dengan proyeksi perspektif (objek tidak melar), sisanya diisi
 oleh mesin Hybrid lokal (push-pull + mirror extension + blur + edge blending) agar menyambung 360°. Mode Hybrid menjadi bawaan: push-pull mempertahankan gradasi warna, mirror extension membantu kesinambungan sisi, lalu blur dan edge blending menghaluskan transisi. Mode Cermin dan Halus klasik tetap tersedia sebagai alternatif. Pengaturan di panel "Gambar 2D → Panorama": jenis isi (Pemandangan / Langit), pola isi, lebar sudut pandang, geser naik/turun, dan pelembutan tepi.
