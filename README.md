@@ -192,6 +192,6 @@ Konfigurasi provider dilakukan di environment server (misalnya Vercel Project Se
 
 Endpoint menerima multipart fields `model`, `prompt`, `size=2048x1024`, `response_format=b64_json`, dan `image`. Provider perlu menerima format Images Edits dan mengembalikan `data[0].b64_json` atau `data[0].url`. Karena dukungan rasio/resolusi berbeda antar-provider, pastikan model yang dipilih mendukung ukuran 2048×1024. Kunci API tidak pernah dikirim ke browser.
 
-Batas awal: gambar sumber maksimal 8 MB; output maksimal 12 MB. Hasil dinormalisasi ke PNG 2048×1024 di browser sebelum dipakai oleh converter. Pemrosesan AI mengirim gambar ke provider yang kamu konfigurasi—jangan unggah gambar sensitif.
+Endpoint AI hanya dapat dipakai oleh pengguna yang sudah login ke NAKA Studio. Batas awal: gambar sumber maksimal 8 MB; output maksimal 12 MB. Hasil dinormalisasi ke PNG 2048×1024 di browser sebelum dipakai oleh converter. Pemrosesan AI mengirim gambar ke provider yang kamu konfigurasi—jangan unggah gambar sensitif.
 
 Tes tambahan: `npm run test:ai`. Tes lama tetap tersedia melalui `npm test` dan `npm run test:convention`.
