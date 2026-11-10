@@ -15,8 +15,8 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600;700&display=swap">
-  <script src="js/i18n.js?v=165"></script>
-  <link rel="stylesheet" href="css/app.css?v=165">
+  <script src="js/i18n.js?v=166"></script>
+  <link rel="stylesheet" href="css/app.css?v=166">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" integrity="sha512-dLxUelApnYxpLt6K2iomGngnHO83iUvZytA3YjDUCjT0HDOHKXnVYdf3hU4JjM8uEhxf9nD1/ey98U3t2vZ0qQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" integrity="sha512-XMVd28F1oH/O71fzwBnV7HucLxVwtxf26XV8P4wPk26EDxuGZ91N8bsOttmnomcCD3CS5ZMRL50H0GgOHvegtg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 </head>
@@ -119,25 +119,28 @@
           <button id="btnCopyIds" type="button">Salin 6 ID</button>
           <span style="font-size:13px;color:var(--muted);align-self:center">Studio: klik kanan <code>Lighting</code> &gt; <em>Insert From File</em>, pilih file ini.</span>
         </div>
-        <label class="check"><input type="checkbox" id="celestial"> Tampilkan matahari/bulan (CelestialBodiesShown)</label>
-        <label class="check"><input type="checkbox" id="withAtm"> Sertakan Atmosphere (kabut udara — ubah suasana langit)</label>
-        <label class="check"><input type="checkbox" id="withLight" checked> Profil pencahayaan (atur Lighting: jam, ambient, bloom, fog — mengikuti mood langit)</label>
-        <div class="row" id="lightRow" hidden>
-          <select id="lightProfile" aria-label="Profil pencahayaan" style="min-height:40px;border-radius:8px;border:1px solid var(--line);background:var(--panel2);color:var(--text);font:inherit;flex:0 1 260px">
-            <option value="auto" selected>Otomatis — analisis kecerahan gambar</option>
-            <option value="siang">Siang (terang, hangat)</option>
-            <option value="senja">Senja (golden hour)</option>
-            <option value="malam">Malam (gelap, bintang)</option>
-            <option value="horor">Horor (suram, fog tebal)</option>
-          </select>
-        </div>
-        <div class="row" id="atmPresetRow" hidden>
-          <select id="atmPreset" aria-label="Preset Atmosphere" style="min-height:40px;border-radius:8px;border:1px solid var(--line);background:var(--panel2);color:var(--text);font:inherit;flex:0 1 240px">
-            <option value="tipis">Atmosphere: Tipis (semu)</option>
-            <option value="normal" selected>Atmosphere: Normal (film look)</option>
-            <option value="tebal">Atmosphere: Tebal (horor / dramatis)</option>
-          </select>
-        </div>
+        <details class="group" style="margin-top:8px">
+          <summary>Opsi script (matahari, kabut, pencahayaan)</summary>
+          <label class="check"><input type="checkbox" id="celestial"> Tampilkan matahari/bulan (CelestialBodiesShown)</label>
+          <label class="check"><input type="checkbox" id="withAtm"> Sertakan Atmosphere (kabut udara — ubah suasana langit)</label>
+          <label class="check"><input type="checkbox" id="withLight" checked> Profil pencahayaan (atur Lighting: jam, ambient, bloom, fog — mengikuti mood langit)</label>
+          <div class="row" id="lightRow" hidden>
+            <select id="lightProfile" aria-label="Profil pencahayaan" style="min-height:40px;border-radius:8px;border:1px solid var(--line);background:var(--panel2);color:var(--text);font:inherit;flex:0 1 260px">
+              <option value="auto" selected>Otomatis — analisis kecerahan gambar</option>
+              <option value="siang">Siang (terang, hangat)</option>
+              <option value="senja">Senja (golden hour)</option>
+              <option value="malam">Malam (gelap, bintang)</option>
+              <option value="horor">Horor (suram, fog tebal)</option>
+            </select>
+          </div>
+          <div class="row" id="atmPresetRow" hidden>
+            <select id="atmPreset" aria-label="Preset Atmosphere" style="min-height:40px;border-radius:8px;border:1px solid var(--line);background:var(--panel2);color:var(--text);font:inherit;flex:0 1 240px">
+              <option value="tipis">Atmosphere: Tipis (semu)</option>
+              <option value="normal" selected>Atmosphere: Normal (film look)</option>
+              <option value="tebal">Atmosphere: Tebal (horor / dramatis)</option>
+            </select>
+          </div>
+        </details>
         <pre id="luau" aria-label="Script Luau"></pre>
         <button id="btnCopy" type="button">Salin script Command Bar</button>
         <span id="copystatus" role="status" style="margin-left:8px;font-size:13px;color:var(--muted)"></span>
@@ -184,7 +187,19 @@
 
   <section id="sec-controls" class="card" aria-label="Kontrol">
     <details class="group" id="grpFlat" open hidden>
-      <summary>Gambar 2D → Panorama</summary>
+      <summary>Gambar 2D → Panorama (otomatis)</summary>
+      <p class="note" id="flatAutoNote">✓ Otomatis — gambar dipakai penuh mengelilingi 360°, sambungan tanpa garis, kutub dirapikan. Semua sudah disetel ke hasil terbaik; untuk setelan manual buka <em>Pengaturan Lanjutan</em> di bawah.</p>
+    </details>
+    <details class="group">
+      <summary data-i18n="sumRes">Resolusi ekspor</summary>
+      <div class="seg" id="segRes" role="group"></div>
+      <p class="note">1024 otomatis dan paling pas untuk Roblox (Roblox menurunkan tekstur ke 1024). 4096 hanya untuk keperluan di luar Roblox seperti Blender.</p>
+    </details>
+    <details class="group" id="advDetail">
+      <summary data-i18n="sumAdvanced">Pengaturan Lanjutan</summary>
+      <p class="note" style="margin-top:4px">Hasil default sudah disetel otomatis ke yang terbaik. Buka bagian ini hanya kalau mau menyetel manual.</p>
+
+      <div class="seglabel">Konversi 2D → 360°</div>
       <div class="seglabel">Jenis gambar</div>
       <div class="seg" id="segMode" role="group"></div>
       <div id="flatCtl">
@@ -214,15 +229,8 @@
         </div>
         <p class="note" style="margin-top:2px">Rapikan kutub: menghaluskan pusaran di titik atas/bawah (sering terjadi pada gambar AI). Tinggi Horizon: geser gambar naik/turun agar lautan awan pas di garis horizon.</p>
       </div>
-    </details>
-    <details class="group" open>
-      <summary data-i18n="sumRes">Resolusi ekspor</summary>
-      <div class="seg" id="segRes" role="group"></div>
-      <p class="note">1024 adalah default yang aman (Roblox menurunkan tekstur ke 1024). Pilih 4096 untuk keperluan di luar Roblox seperti Blender - hasil lebih tajam sebelum dikompres.</p>
-    </details>
-    <details class="group">
-      <summary data-i18n="sumAdvanced">Pengaturan Lanjutan</summary>
-      <p class="note" style="margin-top:4px">Buat hasil default sudah bagus. Buka bagian ini kalau mau menyetel lebih dalam.</p>
+      <div class="seglabel" style="margin-top:14px">Preset cepat</div>
+      <div id="presetHost"></div>
 
       <div class="seglabel">Posisi &amp; Horizon</div>
       <div id="grpPos"></div>
@@ -264,22 +272,22 @@
 <footer class="site-footer"><span>NAKA Studio · Pemrosesan 100% di browser, API key tidak disimpan di server.</span><span><a href="https://github.com/Ihsan-ct/skybox-studio" target="_blank" rel="noopener">GitHub</a> · MIT</span></footer>
 <noscript><p style="padding:16px">Aplikasi ini membutuhkan JavaScript dan WebGL.</p></noscript>
 
-<script src="js/gl-convert.js?v=165"></script>
-<script src="js/testpattern.js?v=165"></script>
-<script src="js/viewer3d.js?v=165"></script>
-<script src="js/zip-export.js?v=165"></script>
-<script src="js/luau.js?v=165"></script>
-<script src="js/stitcher.js?v=165"></script>
-<script src="js/batch.js?v=165"></script>
-<script src="js/prompt-lib.js?v=165"></script>
-<script src="js/samples.js?v=165"></script>
-<script src="js/deswirl.js?v=165"></script>
-<script src="js/paket.js?v=165"></script>
-<script src="js/auth.js?v=165"></script>
-<script src="js/vault.js?v=165"></script>
-<script src="js/roblox-upload.js?v=165"></script>
-<script src="js/flat2pano.js?v=165"></script>
-<script src="js/pano-async.js?v=165"></script>
-<script src="js/main.js?v=165"></script>
+<script src="js/gl-convert.js?v=166"></script>
+<script src="js/testpattern.js?v=166"></script>
+<script src="js/viewer3d.js?v=166"></script>
+<script src="js/zip-export.js?v=166"></script>
+<script src="js/luau.js?v=166"></script>
+<script src="js/stitcher.js?v=166"></script>
+<script src="js/batch.js?v=166"></script>
+<script src="js/prompt-lib.js?v=166"></script>
+<script src="js/samples.js?v=166"></script>
+<script src="js/deswirl.js?v=166"></script>
+<script src="js/paket.js?v=166"></script>
+<script src="js/auth.js?v=166"></script>
+<script src="js/vault.js?v=166"></script>
+<script src="js/roblox-upload.js?v=166"></script>
+<script src="js/flat2pano.js?v=166"></script>
+<script src="js/pano-async.js?v=166"></script>
+<script src="js/main.js?v=166"></script>
 </body>
 </html>

@@ -514,7 +514,7 @@
     { name: 'Dramatis',    v: { brightness: -8, contrast: 25, saturation: 120, warmth: 0,   fadeHorizon: 0, fadeTop: 0,  seamBlend: 8 } }
   ];
   (function buildPresets() {
-    const det = document.createElement('details'); det.className = 'group'; det.open = true;
+    const det = document.createElement('details'); det.className = 'group'; det.open = false;
     const sum = document.createElement('summary'); sum.textContent = 'Preset tampilan';
     const row = document.createElement('div'); row.className = 'row'; row.style.marginTop = '4px';
     PRESETS.forEach(pr => {
@@ -530,7 +530,19 @@
     const note = document.createElement('p'); note.className = 'note';
     note.textContent = 'Titik awal yang cepat. Setelah memilih, sesuaikan lagi slider sesuai selera.';
     det.appendChild(sum); det.appendChild(row); det.appendChild(note);
-    const host = $('sec-controls'); host.insertBefore(det, host.firstElementChild);
+    const host = $('presetHost'); if (host) host.appendChild(det);
+  })();
+
+  // Opsi viewer yang jarang dipakai ikut masuk Pengaturan Lanjutan supaya
+  // tampilan default tetap minimal.
+  (function moveViewerExtras() {
+    const adv = $('advDetail');
+    if (!adv) return;
+    ['chkStudio', 'chkWireframe'].forEach(id => {
+      const inp = document.getElementById(id);
+      const lab = inp && inp.closest('label');
+      if (lab) adv.appendChild(lab);
+    });
   })();
 
   addSlider($('grpColor'), 'brightness', 'Brightness', -100, 100, 1, '');
