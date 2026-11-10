@@ -378,30 +378,53 @@ window.Flat2Pano = (function () {
     const img = ctx.getImageData(0, 0, W, H);
     const d = img.data;
 
-    // 1) FADE KUTUB: baris mendekati kutub dilarutkan ke rata-rata barisnya,
-    //    sehingga di titik kutub tidak ada struktur yang 'ngercut'.
-    const fadeRow = (y, s) => {
+    // 1) FADE KUTUB: baris mendekati kutub dilarutkan ke rata-rata baris yang
+    //    dihaluskan vertikal — menghapus struktur 'ngercut' di kutub sekaligus
+    //    pita horizontal akibat fade per-slice.
+    const rowAvg = (y) => {
       let r = 0, g = 0, b = 0;
       for (let x = 0; x < W; x++) {
         const i4 = (y * W + x) * 4;
         r += d[i4]; g += d[i4 + 1]; b += d[i4 + 2];
       }
-      r /= W; g /= W; b /= W;
-      for (let x = 0; x < W; x++) {
-        const i4 = (y * W + x) * 4;
-        d[i4] = d[i4] + (r - d[i4]) * s;
-        d[i4 + 1] = d[i4 + 1] + (g - d[i4 + 1]) * s;
-        d[i4 + 2] = d[i4 + 2] + (b - d[i4 + 2]) * s;
-      }
+      return [r / W, g / W, b / W];
     };
-    const slices = 10;
-    const sliceH = Math.max(1, Math.round(B / slices));
-    for (let i = 0; i < slices; i++) {
-      const s = s01 * (1 - i / slices) * (1 - i / slices);   // makin dekat kutub makin kuat
-      // atas
-      for (let y = i * sliceH; y < Math.min(H, (i + 1) * sliceH); y++) fadeRow(y, s);
-      // bawah
-      for (let y = Math.max(0, H - (i + 1) * sliceH); y < H - i * sliceH; y++) fadeRow(y, s);
+    // rata-rata baris untuk band atas (i = jarak dari kutub atas) dan bawah
+    const topAvg = new Float64Array(B * 3), botAvg = new Float64Array(B * 3);
+    for (let i = 0; i < B; i++) {
+      const a = rowAvg(i), b2 = rowAvg(H - 1 - i);
+      topAvg[i * 3] = a[0]; topAvg[i * 3 + 1] = a[1]; topAvg[i * 3 + 2] = a[2];
+      botAvg[i * 3] = b2[0]; botAvg[i * 3 + 1] = b2[1]; botAvg[i * 3 + 2] = b2[2];
+    }
+    // haluskan rata-rata baris secara vertikal (box blur, radius B/8) agar
+    // gradasi antar-baris tidak membentuk pita
+    const R = Math.max(2, Math.round(B / 8));
+    const smoothAvg = (src) => {
+      const out = new Float64Array(B * 3);
+      for (let i = 0; i < B; i++) {
+        let r = 0, g = 0, b = 0, n = 0;
+        for (let k = -R; k <= R; k++) {
+          const j = Math.min(B - 1, Math.max(0, i + k));
+          r += src[j * 3]; g += src[j * 3 + 1]; b += src[j * 3 + 2]; n++;
+        }
+        out[i * 3] = r / n; out[i * 3 + 1] = g / n; out[i * 3 + 2] = b / n;
+      }
+      return out;
+    };
+    const topSm = smoothAvg(topAvg), botSm = smoothAvg(botAvg);
+    for (let i = 0; i < B; i++) {
+      const s = s01 * Math.pow(1 - (i + 0.5) / B, 1.6);   // kontinu: makin dekat kutub makin kuat
+      const at = i * 3, ab = at;
+      for (let x = 0; x < W; x++) {
+        const i4 = (i * W + x) * 4;                        // atas
+        d[i4] += (topSm[at] - d[i4]) * s;
+        d[i4 + 1] += (topSm[at + 1] - d[i4 + 1]) * s;
+        d[i4 + 2] += (topSm[at + 2] - d[i4 + 2]) * s;
+        const j4 = ((H - 1 - i) * W + x) * 4;              // bawah
+        d[j4] += (botSm[ab] - d[j4]) * s;
+        d[j4 + 1] += (botSm[ab + 1] - d[j4 + 1]) * s;
+        d[j4 + 2] += (botSm[ab + 2] - d[j4 + 2]) * s;
+      }
     }
 
     // 2) WRAP-BLUR SAMBUNGAN: kolom di sekitar tepi kiri/kanan diblur dengan
@@ -438,6 +461,54 @@ window.Flat2Pano = (function () {
     ctx.putImageData(img, 0, 0);
   }
 
+  // Bersihkan vignette/border gelap tipis di tepi gambar sumber (sisa hasil
+  // upscale AI). Tanpa ini, kolom/baris tepi yang lebih gelap muncul sebagai
+  // garis di sambungan 360° dan di kutub. Deteksi otomatis: tepi hanya
+  // diperbaiki bila luminance-nya jauh di bawah referensi di dalamnya.
+  function cleanEdges(ctx, w, h) {
+    const img = ctx.getImageData(0, 0, w, h);
+    const d = img.data;
+    const lumAt = (x, y) => (d[(y * w + x) * 4] + d[(y * w + x) * 4 + 1] + d[(y * w + x) * 4 + 2]) / 3;
+    const mixCol = (x, refX, k) => {
+      for (let y = 0; y < h; y++) {
+        const i4 = (y * w + x) * 4, j4 = (y * w + refX) * 4;
+        for (let c = 0; c < 3; c++) d[i4 + c] = d[i4 + c] * (1 - k) + d[j4 + c] * k;
+      }
+    };
+    const mixRow = (y, refY, k) => {
+      for (let x = 0; x < w; x++) {
+        const i4 = (y * w + x) * 4, j4 = (refY * w + x) * 4;
+        for (let c = 0; c < 3; c++) d[i4 + c] = d[i4 + c] * (1 - k) + d[j4 + c] * k;
+      }
+    };
+    const colAvg = (x) => { let s = 0; for (let y = 0; y < h; y++) s += lumAt(x, y); return s / h; };
+    const rowAvg = (y) => { let s = 0; for (let x = 0; x < w; x++) s += lumAt(x, y); return s / w; };
+    const ref = 4, KS = [0.95, 0.55, 0.3];
+    // kolom kanan / kiri
+    if (colAvg(w - 1) < colAvg(w - 1 - ref) * 0.9)
+      KS.forEach((k, i) => mixCol(w - 1 - i, w - 2 - i, k));
+    if (colAvg(0) < colAvg(ref) * 0.9)
+      KS.forEach((k, i) => mixCol(i, i + 1, k));
+    // baris atas / bawah
+    if (rowAvg(0) < rowAvg(ref) * 0.9)
+      KS.forEach((k, i) => mixRow(i, i + 1, k));
+    if (rowAvg(h - 1) < rowAvg(h - 1 - ref) * 0.9)
+      KS.forEach((k, i) => mixRow(h - 1 - i, h - 2 - i, k));
+    ctx.putImageData(img, 0, 0);
+  }
+
+  // Gambar sumber siap pakai: digambar ke kanvas natif lalu tepinya dibersihkan.
+  function cleanedSource(src, w, h) {
+    const c = document.createElement('canvas');
+    c.width = w; c.height = h;
+    const ctx = c.getContext('2d', { willReadFrequently: true });
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(src, 0, 0, w, h);
+    try { cleanEdges(ctx, w, h); } catch (e) { /* gambar kecil/rusak: pakai apa adanya */ }
+    return c;
+  }
+
   // ── Mode PENUH (ala TC/NX): [gambar asli | cermin] nutup 360°, vertikal
   //    direntangkan sampai kutub. Seluruh langit terisi konten gambar. ──
   function convertMirror(src, sw, sh, o) {
@@ -448,7 +519,7 @@ window.Flat2Pano = (function () {
 
     const sc = Math.min(1, 4096 / Math.max(sw, sh));
     const pw = Math.max(1, Math.round(sw * sc)), ph = Math.max(1, Math.round(sh * sc));
-    const px = getPixels(src, pw, ph);
+    const px = getPixels(cleanedSource(src, pw, ph), pw, ph);
 
     const out = document.createElement('canvas');
     out.width = W; out.height = H;
@@ -526,7 +597,7 @@ window.Flat2Pano = (function () {
     const og = out.getContext('2d', { willReadFrequently: true });
     og.imageSmoothingEnabled = true;
     og.imageSmoothingQuality = 'high';
-    og.drawImage(src, 0, 0, W, H);
+    og.drawImage(cleanedSource(src, sw, sh), 0, 0, W, H);
 
     // Sambungkan tepi kiri↔kanan (u=0/1): band sempit di tepi kiri mengambil
     // cermin konten tepi kanan (kolom W-1-x), lalu dibaurkan ke konten kiri.

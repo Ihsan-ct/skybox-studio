@@ -334,7 +334,8 @@
           c = flat.fill === 'penuh'
             ? window.Flat2Pano.convertFull(flat.src, flat.w, flat.h, optPano)
             : window.Flat2Pano.convertMirror(flat.src, flat.w, flat.h, optPano);
-          if (flat.smooth > 0) window.Flat2Pano.smoothPoles(c, 0.14, flat.smooth / 100);
+          // Mode penuh menaruh tepi gambar persis di kutub — butuh rapikan lebih kuat.
+          if (flat.smooth > 0) window.Flat2Pano.smoothPoles(c, 0.14, Math.min(1, 0.4 + flat.smooth / 100));
         } else {
           c = window.Flat2Pano.convert(flat.src, flat.w, flat.h, Object.assign(optPano, { fill: flat.fill }));
         }
