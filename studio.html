@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600;700&display=swap">
-  <link rel="stylesheet" href="css/app.css">
+  <link rel="stylesheet" href="css/app.css?v=152">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" integrity="sha512-dLxUelApnYxpLt6K2iomGngnHO83iUvZytA3YjDUCjT0HDOHKXnVYdf3hU4JjM8uEhxf9nD1/ey98U3t2vZ0qQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" integrity="sha512-XMVd28F1oH/O71fzwBnV7HucLxVwtxf26XV8P4wPk26EDxuGZ91N8bsOttmnomcCD3CS5ZMRL50H0GgOHvegtg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 </head>
@@ -156,9 +156,13 @@
       <div class="row" style="gap:8px;margin-bottom:8px">
         <button type="button" id="tab-sub-stitch" class="primary" aria-pressed="true">Gabung 6 Sisi</button>
         <button type="button" id="tab-sub-batch" aria-pressed="false">Batch Convert</button>
+        <button type="button" id="tab-sub-deswirl" aria-pressed="false">Perbaiki Pilinan</button>
+        <button type="button" id="tab-sub-paket" aria-pressed="false">Paket Langit</button>
       </div>
       <div id="sub-stitch"><div id="panel-stitch"></div></div>
       <div id="sub-batch" hidden><div id="panel-batch"></div></div>
+      <div id="sub-deswirl" hidden><div id="panel-deswirl"></div></div>
+      <div id="sub-paket" hidden><div id="panel-paket"></div></div>
     </div>
 
     <!-- ═══ AI PROMPT ═══ -->
@@ -236,6 +240,7 @@
       <div class="row">
         <button type="button" id="btnCfgExport" style="min-height:38px;font-size:13px">Ekspor pengaturan (.json)</button>
         <button type="button" id="btnCfgImport" style="min-height:38px;font-size:13px">Impor pengaturan</button>
+        <button type="button" id="btnCfgLink" style="min-height:38px;font-size:13px">Salin Link Konfigurasi</button>
         <input type="file" id="cfgFile" accept="application/json,.json" hidden>
       </div>
     </details>
@@ -244,19 +249,21 @@
 <footer class="site-footer"><span>NAKA Studio · Pemrosesan 100% di browser, API key tidak disimpan di server.</span><span><a href="https://github.com/Ihsan-ct/skybox-studio" target="_blank" rel="noopener">GitHub</a> · MIT</span></footer>
 <noscript><p style="padding:16px">Aplikasi ini membutuhkan JavaScript dan WebGL.</p></noscript>
 
-<script src="js/gl-convert.js"></script>
-<script src="js/testpattern.js"></script>
-<script src="js/viewer3d.js"></script>
-<script src="js/zip-export.js"></script>
-<script src="js/luau.js"></script>
-<script src="js/stitcher.js"></script>
-<script src="js/batch.js"></script>
-<script src="js/prompt-lib.js"></script>
-<script src="js/samples.js"></script>
-<script src="js/auth.js"></script>
-<script src="js/vault.js"></script>
-<script src="js/roblox-upload.js"></script>
-<script src="js/flat2pano.js"></script>
-<script src="js/main.js"></script>
+<script src="js/gl-convert.js?v=152"></script>
+<script src="js/testpattern.js?v=152"></script>
+<script src="js/viewer3d.js?v=152"></script>
+<script src="js/zip-export.js?v=152"></script>
+<script src="js/luau.js?v=152"></script>
+<script src="js/stitcher.js?v=152"></script>
+<script src="js/batch.js?v=152"></script>
+<script src="js/prompt-lib.js?v=152"></script>
+<script src="js/samples.js?v=152"></script>
+<script src="js/deswirl.js?v=152"></script>
+<script src="js/paket.js?v=152"></script>
+<script src="js/auth.js?v=152"></script>
+<script src="js/vault.js?v=152"></script>
+<script src="js/roblox-upload.js?v=152"></script>
+<script src="js/flat2pano.js?v=152"></script>
+<script src="js/main.js?v=152"></script>
 </body>
 </html>

@@ -719,19 +719,26 @@
   window.Stitcher.build($('panel-stitch'));
   window.BatchConvert.build($('panel-batch'), state, () => requestRender());
   window.PromptLib.build($('panel-prompt'));
+  if (window.DeSwirl) window.DeSwirl.build($('panel-deswirl'), state, requestRender);
+  if (window.PaketLangit) window.PaketLangit.build($('panel-paket'), state);
   if (window.RobloxUpload) window.RobloxUpload.build($('rbxWizard'), state, refreshLuau);
 
-  // Sub-tab di panel Alat: Stitcher / Batch
-  $('tab-sub-stitch').addEventListener('click', () => {
-    $('sub-stitch').hidden = false; $('sub-batch').hidden = true;
-    $('tab-sub-stitch').classList.add('primary'); $('tab-sub-batch').classList.remove('primary');
-    $('tab-sub-stitch').setAttribute('aria-pressed', 'true'); $('tab-sub-batch').setAttribute('aria-pressed', 'false');
-  });
-  $('tab-sub-batch').addEventListener('click', () => {
-    $('sub-stitch').hidden = true; $('sub-batch').hidden = false;
-    $('tab-sub-batch').classList.add('primary'); $('tab-sub-stitch').classList.remove('primary');
-    $('tab-sub-batch').setAttribute('aria-pressed', 'true'); $('tab-sub-stitch').setAttribute('aria-pressed', 'false');
-  });
+  // Sub-tab di panel Alat: Stitcher / Batch / Perbaiki Pilinan / Paket Langit
+  const alatTabs = [
+    ['tab-sub-stitch', 'sub-stitch'],
+    ['tab-sub-batch', 'sub-batch'],
+    ['tab-sub-deswirl', 'sub-deswirl'],
+    ['tab-sub-paket', 'sub-paket']
+  ];
+  function switchAlat(id) {
+    alatTabs.forEach(([tb, pn]) => {
+      const on = tb === id;
+      $(tb).classList.toggle('primary', on);
+      $(tb).setAttribute('aria-pressed', String(on));
+      $(pn).hidden = !on;
+    });
+  }
+  alatTabs.forEach(([tb]) => $(tb).addEventListener('click', () => switchAlat(tb)));
 
   // Toggle preview Cross 2D di dalam tab Konversi (default: 3D).
   $('btnCrossToggle').addEventListener('click', () => {
@@ -1159,6 +1166,29 @@
     addBanner('info', 'Konfigurasi diterapkan' + (cfg.image ? ' (asal: ' + cfg.image + ')' : '') + '.');
   }
   $('btnCfgImport').addEventListener('click', () => $('cfgFile').click());
+  $('btnCfgLink').addEventListener('click', async () => {
+    const cfg = { _app: 'naka-studio-config', _v: 1 };
+    CFG_KEYS.forEach(k => { cfg[k] = state[k]; });
+    const b64 = btoa(unescape(encodeURIComponent(JSON.stringify(cfg)))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    const link = location.origin + location.pathname + '#cfg=' + b64;
+    try {
+      await navigator.clipboard.writeText(link);
+      addBanner('info', 'Link konfigurasi tersalin — siap dibagikan: ' + link.slice(0, 80) + '…');
+    } catch (_) {
+      addBanner('info', 'Clipboard ditolak. Link: ' + link);
+    }
+  });
+  (function () {
+    const h = new URLSearchParams(location.hash.slice(1));
+    const raw = h.get('cfg');
+    if (!raw) return;
+    try {
+      const json = decodeURIComponent(escape(atob(raw.replace(/-/g, '+').replace(/_/g, '/'))));
+      const cfg = JSON.parse(json);
+      const applyWhenReady = () => { if (typeof applyConfig === 'function') applyConfig(cfg); };
+      applyWhenReady();
+    } catch (e) { console.warn('cfg hash rusak', e); }
+  })();
   $('cfgFile').addEventListener('change', () => {
     const f = $('cfgFile').files[0];
     $('cfgFile').value = '';

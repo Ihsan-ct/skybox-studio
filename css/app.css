@@ -400,3 +400,18 @@ header .brand .logo-img { animation: logoPulse 4.5s ease-in-out infinite; }
   background: rgba(20, 21, 24, .8); border-radius: 4px;
   color: #9fe0ff; font-size: 10.5px; font-variant-numeric: tabular-nums; letter-spacing: .03em;
 }
+
+/* ══ Mobile (audit #8) ══ */
+@media (max-width: 720px) {
+  .studio-hud .hud-right, .studio-hud .hud-viewcube { display: none; }
+  .studio-hud .hud-ribbon { height: 26px; }
+  .studio-hud .hud-tabs b { font-size: 10px; padding: 2px 7px; }
+  .studio-hud .hud-tools { display: none; }
+  .tabs { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tabs [role=tab] { flex: 0 0 auto; }
+  .app { gap: 10px; padding: 10px 10px 18px; }
+  .card { padding: 11px; }
+  #empty ol { font-size: 13px; }
+  .hero { padding: 20px 16px; }
+}

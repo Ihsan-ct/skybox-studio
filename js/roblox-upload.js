@@ -38,12 +38,17 @@ window.RobloxUpload = (function () {
     r.status.className = 'rbx-status' + (ok ? ' ok' : '');
   }
 
+  function setBar(k, pct) {
+    if (rows[k] && rows[k].bar) rows[k].bar.style.width = Math.max(0, Math.min(100, pct)) + '%';
+  }
+  function resetBar(k) { setBar(k, 0); }
+
   const LIMIT = 4.2 * 1024 * 1024; // di bawah batas body Vercel (4,5 MB)
   const done = {}, pending = {};    // sisi -> assetId / operation path, supaya bisa lanjut setelah gagal
   let doneType = null, lastSig = '';
 
   function resetProgress() {
-    PROP_KEYS.forEach(k => { delete done[k]; delete pending[k]; setRowStatus(k, 'Belum diunggah', false); setRetry(k, false); });
+    PROP_KEYS.forEach(k => { delete done[k]; delete pending[k]; setRowStatus(k, 'Belum diunggah', false); setRetry(k, false); setBar(k, 0); });
     doneType = null; lastSig = '';
   }
 
@@ -178,10 +183,12 @@ window.RobloxUpload = (function () {
           if (!path) {
             const f = FACE_FOR_PROP[k];
             setRowStatus(k, 'Merender…', false);
+            setBar(k, 8);
             const { blob, size } = await fitFacePng(f, state.exportRes, state);
             if (size !== state.exportRes) log('Skybox' + k + ' diperkecil ke ' + size + 'px agar muat batas 4,5 MB.');
             const name = base + '_' + k;
             setRowStatus(k, 'Mengunggah…', false);
+            setBar(k, 18);
             try {
               path = oauth ? await oauthUpload(type, name, blob) : await createAsset(apiKey, type, name, ownerType, ownerId, blob);
             } catch (e) {
@@ -195,6 +202,9 @@ window.RobloxUpload = (function () {
             pending[k] = path;
           }
           setRowStatus(k, 'Diproses Roblox…', false);
+          setBar(k, 30);
+          const pollT0 = Date.now();
+          const pollIv = setInterval(() => setBar(k, Math.min(88, 30 + Math.round((Date.now() - pollT0) / 800))), 450);
           let assetId, moderation = null;
           try {
             if (oauth) {
@@ -203,7 +213,9 @@ window.RobloxUpload = (function () {
             } else {
               assetId = await pollOperation(apiKey, path);
             }
-          } catch (e) { if (/Ditolak Roblox/.test(e.message)) delete pending[k]; throw e; }   // ditolak: render ulang saat dicoba lagi
+          } catch (e) { clearInterval(pollIv); if (/Ditolak Roblox/.test(e.message)) delete pending[k]; throw e; }   // ditolak: render ulang saat dicoba lagi
+          clearInterval(pollIv);
+          setBar(k, 100);
           done[k] = assetId; delete pending[k];
           if (!saved && autoSave) { saved = true; try { await autoSave(); } catch (e) {} }
           const modPending = moderation && !/APPROVED/i.test(moderation);
@@ -351,7 +363,9 @@ window.RobloxUpload = (function () {
       const retry = mk('button', { type: 'button', textContent: 'Coba lagi', hidden: true }, cell);
       retry.style.cssText = 'margin-top:4px;min-height:32px;font-size:12px';
       retry.addEventListener('click', () => run(state, onIdsUpdated, k));
-      rows[k] = { status, retry };
+      const barWrap = mk('div', { style: 'height:5px;border-radius:99px;background:rgba(255,255,255,.08);overflow:hidden;margin-top:4px' }, cell);
+      const bar = mk('div', { style: 'height:100%;width:0%;background:var(--grad);transition:width .3s' }, barWrap);
+      rows[k] = { status, retry, bar };
     });
 
     btnUpload = mk('button', { type: 'button', className: 'primary', textContent: 'Upload ke Roblox' }, s2);
