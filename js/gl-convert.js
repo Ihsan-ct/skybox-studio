@@ -95,7 +95,8 @@ window.GLConvert = (function () {
     'void main(){',
     '  vec2 fc = gl_FragCoord.xy;',
     '  vec3 a = shade(fc + vec2(-0.25, -0.125)) + shade(fc + vec2(0.125, -0.25)) + shade(fc + vec2(0.25, 0.125)) + shade(fc + vec2(-0.125, 0.25));',
-    '  vec3 c = a * 0.25;',
+    '  vec3 a2 = shade(fc + vec2(0.375, -0.375)) + shade(fc + vec2(-0.375, 0.375)) + shade(fc + vec2(-0.375, -0.375)) + shade(fc + vec2(0.375, 0.375));',
+    '  vec3 c = (a + a2) * 0.125;',
     '  c += (hash(fc) + hash(fc + 17.0) - 1.0) / 255.0;',
     '  gl_FragColor = vec4(clamp(c, 0.0, 1.0), 1.0);',
     '}'
@@ -169,6 +170,8 @@ window.GLConvert = (function () {
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    const aniso = gl.getExtension('EXT_texture_filter_anisotropic') || gl.getExtension('WEBKIT_EXT_texture_filter_anisotropic');
+    if (aniso) gl.texParameterf(gl.TEXTURE_2D, aniso.TEXTURE_MAX_ANISOTROPY_EXT, Math.min(8, gl.getParameter(aniso.MAX_TEXTURE_MAX_ANISOTROPY_EXT)));
     const err = gl.getError();
     if (err !== gl.NO_ERROR) {
       throw new Error('Gagal mengunggah tekstur ke GPU (WebGL Error ' + err + ').');

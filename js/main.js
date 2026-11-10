@@ -337,7 +337,7 @@
       if (token !== flatToken) return;
       try {
         const optPano = {
-          fov: flat.fov, pitch: flatPitch(), edge: flat.edge, maxW: 2048
+          fov: flat.fov, pitch: flatPitch(), edge: flat.edge, maxW: Math.min(4096, GL.getMaxTex())
         };
         const c = window.Flat2Pano.convert(flat.src, flat.w, flat.h, Object.assign(optPano, { fill: flat.fill }));
         if (token !== flatToken) return;
@@ -620,7 +620,7 @@
     return refresh;
   }
 
-  makeSeg($('segRes'), [512, 1024, 2048], v => v + ' px', () => state.exportRes, v => {
+  makeSeg($('segRes'), [512, 1024, 2048, 4096], v => v + ' px', () => state.exportRes, v => {
     state.exportRes = v;
     if (activeTab === 'konversi' && !showCross) schedule3DRender();
   });

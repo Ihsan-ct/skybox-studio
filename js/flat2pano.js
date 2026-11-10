@@ -178,7 +178,7 @@ window.Flat2Pano = (function () {
     //         lalu di-blur berat -> wash warna sadar-arah tanpa artefak duplikat.
     // halus : push-pull warna dari tepi gambar (perilaku lama).
     let fillMap = null, rowAvg = null;
-    const LW = 256, LH = 128;
+    const LW = 384, LH = 192;
     if (fill === 'cermin' || fill === 'hybrid') {
       const nPanel = Math.ceil((2 * PI) / fov);
       const panelW = (2 * PI) / nPanel;
