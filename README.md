@@ -17,7 +17,14 @@ Aplikasi web 100% client-side (WebGL + Three.js) tanpa framework dan tanpa build
 12. **Login pakai Roblox (OAuth)**: opsi upload tanpa API key — token `asset:read`/`asset:write` disimpan server-side dan terikat sesi situs. Aktif dengan env `RBX_OAUTH_CLIENT_ID` + `RBX_OAUTH_CLIENT_SECRET` (OAuth app di Creator Hub, redirect URI `https://<domain>/api/rbx-oauth/callback`).
 13. **Opsi sisi bawah "Cermin langit"**: refleksi langit ke sisi Down, untuk pembuat map melayang.
 14. **Langit contoh prosedural** (Siang/Senja/Malam Berbintang) di empty state — bisa langsung dicoba tanpa punya gambar.
-15. **Paket Ganti-Langit**: dari riwayat upload, ekspor satu .rbxmx berisi folder `SkyboxSets` (banyak Sky) + script switcher untuk berganti langit dari dalam game, plus `StarCount`/`SunAngularSize`/`MoonAngularSize` pada setiap file Sky.
+15. **Mode Studio**: preview 3D tampil seperti viewport Roblox Studio asli — baseplate stud-grid, SpawnLocation, karakter noob berbayangan, plus chrome Studio (ribbon, Explorer, Properties, Output, view cube, koordinat kamera live).
+16. **HD**: ekspor 4096px, supersampling 8-tap, anisotropic filtering, konversi 2D-to-pano hingga 4096.
+17. **Perbaiki Pilinan (De-swirl)**: selamatkan panorama AI berpilin lewat polar unwrap terbalik.
+18. **Paket Langit Gratis**: 36 PNG (6 langit contoh × 6 sisi) dalam satu ZIP.
+19. **Galeri Komunitas**: bagikan & pakai setelan skybox antar kreator (butuh Upstash).
+20. **Bahasa ID/EN**: toggle dua bahasa untuk chrome utama.
+21. **Web Worker**: konversi berjalan di latar belakang — UI tidak membeku.
+22. **Varian warna instan** + **Salin Link Konfigurasi** + **progress bar upload** + **Rapikan kutub/sambungan otomatis**.: dari riwayat upload, ekspor satu .rbxmx berisi folder `SkyboxSets` (banyak Sky) + script switcher untuk berganti langit dari dalam game, plus `StarCount`/`SunAngularSize`/`MoonAngularSize` pada setiap file Sky.
 
 ## Struktur Proyek
 ```
