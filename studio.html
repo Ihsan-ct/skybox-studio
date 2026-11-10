@@ -85,13 +85,6 @@
         </div>
       </div>
       <div class="stage" id="stage3d"></div>
-      <div id="crossWrap" hidden>
-        <div class="stage">
-          <canvas id="cross" width="1024" height="768" aria-label="Preview 6 sisi skybox dalam susunan cross"></canvas>
-        </div>
-        <div class="facebtns" id="facebtns"></div>
-        <div id="status" role="status" aria-live="polite"></div>
-      </div>
       <div class="konv-controls">
         <label class="check"><input type="checkbox" id="chkCharacter" checked> ><span data-i18n="chkChar">arakter Roblox</label>
         <label class="check"><input type="checkbox" id="chkBaseplate" checked> ><span data-i18n="chkBaseplate">aseplate</label>
@@ -101,8 +94,12 @@
           <label>FOV: <output id="out_fov">75</output></label>
           <input type="range" id="s_fov" min="40" max="100" value="75">
         </div>
-        <button id="btnCrossToggle" type="button" class="push">Lihat Cross 2D</button>
       </div>
+      <details class="group" style="margin-top:10px">
+        <summary>Ekspor sisi tunggal (PNG per properti)</summary>
+        <div class="facebtns" id="facebtns"></div>
+        <div id="status" role="status" aria-live="polite"></div>
+      </details>
     </div>
 
     <!-- ═══ ROBLOX: wizard unggah + pemasangan ═══ -->

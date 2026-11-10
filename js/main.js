@@ -60,14 +60,10 @@
 
   let busy = false;
   let activeTab = 'konversi';
-  let showCross = false;   // panel Konversi: preview 3D (default) atau cross 2D
   const PREVIEW = 256;
 
-  const crossCanvases = {};
   const canvases3D = {};
   GL.FACES.forEach(f => {
-    const c1 = document.createElement('canvas'); c1.width = PREVIEW; c1.height = PREVIEW;
-    crossCanvases[f.k] = c1;
     const c2 = document.createElement('canvas'); c2.width = 512; c2.height = 512;
     canvases3D[f.k] = c2;
   });
@@ -144,9 +140,6 @@
   $('th-light').addEventListener('click', () => applyTheme('light'));
   applyTheme(state.theme);
 
-  const cross = $('cross');
-  cross.width = PREVIEW * 4; cross.height = PREVIEW * 3;
-  const cctx = cross.getContext('2d');
   let rafPending = false;
   let debounce3dTimer = null;
 
@@ -155,23 +148,7 @@
     rafPending = true;
     requestAnimationFrame(() => {
       rafPending = false;
-      if (showCross) renderCross();
-      if (activeTab === 'konversi' && !showCross) schedule3DRender();
-    });
-  }
-
-  function renderCross() {
-    if (!state.image || busy) return;
-    GL.setSize(PREVIEW);
-    cctx.fillStyle = '#0d0f14'; cctx.fillRect(0, 0, cross.width, cross.height);
-
-    GL.FACES.forEach(f => {
-      GL.drawFace(f, PREVIEW, state);
-      const c = crossCanvases[f.k];
-      const ctx = c.getContext('2d');
-      ctx.drawImage(GL.glCanvas, 0, 0);
-      GL.applyWatermark(ctx, f.k, PREVIEW, state);
-      cctx.drawImage(c, f.cell[0] * PREVIEW, f.cell[1] * PREVIEW);
+      if (activeTab === 'konversi') schedule3DRender();
     });
   }
 
@@ -183,7 +160,7 @@
   }
 
   function render3DTextures() {
-    if (!state.image || busy || activeTab !== 'konversi' || showCross) return;
+    if (!state.image || busy || activeTab !== 'konversi') return;
     const res3d = 1024;
     GL.setSize(res3d);
 
@@ -278,7 +255,7 @@
     }
 
     requestRender();
-    if (activeTab === 'konversi' && !showCross) render3DTextures();
+    if (activeTab === 'konversi') render3DTextures();
   }
 
   function loadFile(file) {
@@ -633,7 +610,7 @@
 
   makeSeg($('segRes'), [512, 1024, 2048, 4096], v => v + ' px', () => state.exportRes, v => {
     state.exportRes = v;
-    if (activeTab === 'konversi' && !showCross) schedule3DRender();
+    if (activeTab === 'konversi') schedule3DRender();
   });
   const refUp = makeSeg($('segUp'), [0, 90, 180, 270], v => v + '°', () => state.rotUp, v => { state.rotUp = v; requestRender(); });
   const refDn = makeSeg($('segDn'), [0, 90, 180, 270], v => v + '°', () => state.rotDn, v => { state.rotDn = v; requestRender(); });
@@ -677,7 +654,6 @@
         addBanner('error', 'Gagal mengekspor ' + f.name + ': ' + e.message + '. Coba pilih resolusi lebih kecil.');
       } finally {
         setExportButtonsBusy(false);
-        renderCross();
       }
     });
     $('facebtns').appendChild(b);
@@ -691,7 +667,6 @@
       addBanner('error', 'Gagal membuat atlas cross: ' + e.message);
     } finally {
       setExportButtonsBusy(false);
-      if (showCross) renderCross();
     }
   });
 
@@ -703,7 +678,6 @@
       addBanner('error', 'Gagal membuat ZIP: ' + e.message + '. Coba pilih resolusi 512 atau 1024 px.');
     } finally {
       setExportButtonsBusy(false);
-      renderCross();
     }
   });
 
@@ -751,20 +725,6 @@
   }
   alatTabs.forEach(([tb]) => $(tb).addEventListener('click', () => switchAlat(tb)));
 
-  // Toggle preview Cross 2D di dalam tab Konversi (default: 3D).
-  $('btnCrossToggle').addEventListener('click', () => {
-    showCross = !showCross;
-    $('crossWrap').hidden = !showCross;
-    $('btnCrossToggle').textContent = showCross ? 'Kembali ke 3D' : 'Lihat Cross 2D';
-    if (showCross) {
-      V3D.setVisible(false);
-      requestRender();
-    } else {
-      V3D.setVisible(true);
-      render3DTextures();
-    }
-  });
-
   function switchTab(name) {
     activeTab = name;
     tabNames.forEach(t => {
@@ -778,8 +738,8 @@
 
     if (name === 'konversi') {
       V3D.init($('stage3d'));
-      V3D.setVisible(!showCross);
-      if (showCross) requestRender(); else render3DTextures();
+      V3D.setVisible(true);
+      render3DTextures();
     } else {
       V3D.setVisible(false);
     }
@@ -872,7 +832,6 @@
 
   $('btnView3d').addEventListener('click', () => {
     switchTab('konversi');
-    if (showCross) $('btnCrossToggle').click();   // kembali ke tampilan 3D
     window.scrollTo({ top: 0, behavior: 'smooth' });
   });
 
@@ -1292,7 +1251,7 @@
     refUp(); refDn();
     savePrefs();
     requestRender();
-    if (activeTab === 'konversi' && !showCross) render3DTextures();
+    if (activeTab === 'konversi') render3DTextures();
     addBanner('info', 'Konfigurasi diterapkan' + (cfg.image ? ' (asal: ' + cfg.image + ')' : '') + '.');
   }
   $('btnCfgImport').addEventListener('click', () => $('cfgFile').click());
@@ -1344,7 +1303,7 @@
         try { GL.uploadTexture(state.image.source); } catch (_) {}
       }
       requestRender();
-      if (activeTab === 'konversi' && !showCross) render3DTextures();
+      if (activeTab === 'konversi') render3DTextures();
     },
     onGLContextLost: () => {
       if (!glLostBanner) {
@@ -1361,7 +1320,7 @@
       if (state.image) {
         try { GL.uploadTexture(state.image.source); } catch (e) { addBanner('error', 'Gagal memuat ulang tekstur: ' + e.message); return; }
         requestRender();
-        if (activeTab === 'konversi' && !showCross) render3DTextures();
+        if (activeTab === 'konversi') render3DTextures();
       }
     },
     on3DContextLost: () => {
