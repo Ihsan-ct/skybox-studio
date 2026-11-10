@@ -302,7 +302,7 @@
 
 
   // ---------- Gambar 2D biasa -> panorama 360° otomatis ----------
-  const flat = { src: null, w: 0, h: 0, name: '', size: null, mode: '2d', kind: 'scene', fov: 100, offset: 0, edge: 18, fill: 'cermin', smooth: 30, vOff: 0 };
+  const flat = { src: null, w: 0, h: 0, name: '', size: null, mode: '2d', kind: 'scene', fov: 100, offset: 0, edge: 18, fill: 'hybrid', smooth: 30, vOff: 0 };
   let flatTimer = null, flatToken = 0;
 
   function flatPitch() {
@@ -342,7 +342,7 @@
         const c = window.Flat2Pano.convert(flat.src, flat.w, flat.h, Object.assign(optPano, { fill: flat.fill }));
         if (token !== flatToken) return;
         setImage(c, c.width, c.height, flat.name + ' [2D→360°]', flat.size, { skipRatioCheck: true });
-        note.textContent = 'Gambar ditempatkan di depan kamera tanpa melar, sisanya diisi otomatis dari warna gambar dan menyambung 360°.';
+        note.textContent = 'Hybrid selesai: gambar asli dipertahankan, area luar diperluas dengan push-pull + mirror extension, lalu dibaurkan agar panorama menyambung 360°.';
       } catch (e) {
         note.textContent = '';
         addBanner('error', 'Gagal mengubah gambar 2D menjadi panorama: ' + e.message);
