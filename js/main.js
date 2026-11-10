@@ -302,7 +302,7 @@
 
 
   // ---------- Gambar 2D biasa -> panorama 360° otomatis ----------
-  const flat = { src: null, w: 0, h: 0, name: '', size: null, mode: '2d', kind: 'scene', fov: 100, offset: 0, edge: 18, fill: 'cermin', smooth: 30, vOff: 0 };
+  const flat = { src: null, w: 0, h: 0, name: '', size: null, mode: '2d', kind: 'scene', fov: 100, offset: 0, edge: 18, fill: 'hybrid', smooth: 30, vOff: 0 };
   let flatTimer = null, flatToken = 0;
 
   function flatPitch() {
@@ -337,12 +337,16 @@
       if (token !== flatToken) return;
       try {
         const optPano = {
-          fov: flat.fov, pitch: flatPitch(), edge: flat.edge, maxW: Math.min(4096, GL.getMaxTex())
+          fov: flat.fov, pitch: flatPitch(), edge: flat.edge, maxW: 2048
         };
         const c = window.Flat2Pano.convert(flat.src, flat.w, flat.h, Object.assign(optPano, { fill: flat.fill }));
         if (token !== flatToken) return;
         setImage(c, c.width, c.height, flat.name + ' [2D→360°]', flat.size, { skipRatioCheck: true });
-        note.textContent = 'Gambar ditempatkan di depan kamera tanpa melar, sisanya diisi otomatis dari warna gambar dan menyambung 360°.';
+        note.textContent = flat.fill === 'hybrid'
+          ? 'Hybrid selesai: gambar asli dipertahankan, area luar diperluas dengan push-pull + mirror extension, lalu dibaurkan agar panorama menyambung 360°.'
+          : flat.fill === 'cermin'
+            ? 'Mode Cermin selesai: area luar diperluas dengan mirror extension dan blur agar menyambung 360°.'
+            : 'Mode Halus selesai: area luar diisi dengan push-pull dan blur agar menyambung 360°.';
       } catch (e) {
         note.textContent = '';
         addBanner('error', 'Gagal mengubah gambar 2D menjadi panorama: ' + e.message);
@@ -387,7 +391,13 @@
 
   const refreshMode = makeFlatSeg($('segMode'),
     [{ label: 'Gambar 2D biasa', v: '2d' }, { label: 'Panorama 360°', v: 'pano' }],
-    () => flat.mode, v => { flat.mode = v; $('flatCtl').hidden = v !== '2d'; state.vOff = 0; applyFlat(); });
+    () => flat.mode, v => {
+      flat.mode = v;
+      $('flatCtl').hidden = v !== '2d';
+      $('grpPanoCtl').hidden = v !== 'pano';
+      state.vOff = 0;
+      applyFlat();
+    });
   const refreshKind = makeFlatSeg($('segKind'),
     [{ label: 'Pemandangan', v: 'scene' }, { label: 'Langit (di atas horizon)', v: 'sky' }],
     () => flat.kind, v => { flat.kind = v; scheduleFlat(); });

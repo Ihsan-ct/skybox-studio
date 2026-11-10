@@ -6,8 +6,8 @@
  * Cara kerja:
  *  1. Gambar diletakkan di depan kamera sebagai proyeksi perspektif (rectilinear) dengan
  *     sudut pandang horizontal tertentu, sehingga bentuk objek (mis. bulan) tetap bulat.
- *  2. Sisa bola langit diisi dengan perluasan warna gambar (push-pull) yang halus dan
- *     otomatis menyambung di sekeliling 360°.
+ *  2. Sisa bola langit diisi dengan Hybrid push-pull + mirror extension, blur, dan
+ *     blending warna agar menyambung di sekeliling 360°.
  *  3. Dekat kutub atas/bawah, warna dirata-ratakan agar tidak muncul pusaran.
  */
 window.Flat2Pano = (function () {
@@ -150,7 +150,7 @@ window.Flat2Pano = (function () {
     const pitch = (o.pitch || 0) * PI / 180;
     const edge = Math.min(0.4, Math.max(0, (o.edge == null ? 10 : o.edge) / 100));
     const maxW = o.maxW || 4096;
-    const fill = o.fill === 'halus' ? 'halus' : 'cermin';
+    const fill = o.fill === 'halus' || o.fill === 'cermin' ? o.fill : 'hybrid';
     // Refleksi segitiga ke [0,1] - mengisi zona di luar gambar (mode cermin).
     const tri01 = t => { const m = ((t % 2) + 2) % 2; return 1 - Math.abs(m - 1); };
 
@@ -179,7 +179,7 @@ window.Flat2Pano = (function () {
     // halus : push-pull warna dari tepi gambar (perilaku lama).
     let fillMap = null, rowAvg = null;
     const LW = 256, LH = 128;
-    if (fill === 'cermin') {
+    if (fill === 'cermin' || fill === 'hybrid') {
       const nPanel = Math.ceil((2 * PI) / fov);
       const panelW = (2 * PI) / nPanel;
       const tile = document.createElement('canvas');
@@ -236,6 +236,38 @@ window.Flat2Pano = (function () {
               fdata[q00 + ch] * w00 + fdata[q10 + ch] * w10 +
               fdata[q01 + ch] * w01 + fdata[q11 + ch] * w11;
           }
+        }
+      }
+      // Hybrid: gabungkan push-pull (warna yang mengikuti struktur gambar) dengan
+      // mirror wash (warna tepi yang stabil). Ini tetap murni pemrosesan piksel lokal.
+      if (fill === 'hybrid') {
+        const base = new Float32Array(LW * LH * 4);
+        const tmp = [0, 0, 0];
+        const lowSrcW = Math.min(pw, 192);
+        const lowSrcH = Math.max(1, Math.round(ph * lowSrcW / pw));
+        const lowPx = getPixels(src, lowSrcW, lowSrcH);
+        for (let y = 0; y < LH; y++) {
+          const lat = PI / 2 - (y + 0.5) / LH * PI;
+          const sl = Math.sin(lat), cl = Math.cos(lat);
+          for (let x = 0; x < LW; x++) {
+            const lon = (x + 0.5) / LW * 2 * PI - PI;
+            const dx = cl * Math.sin(lon), dz = cl * Math.cos(lon);
+            const yy = sl * cp - dz * sp, zz = sl * sp + dz * cp;
+            if (zz <= 0.02) continue;
+            const u = dx / zz / th * 0.5 + 0.5;
+            const v = 0.5 - yy / zz / thv * 0.5;
+            if (u < 0 || u > 1 || v < 0 || v > 1) continue;
+            sampleU8(lowPx, lowSrcW, lowSrcH, u * (lowSrcW - 1), v * (lowSrcH - 1), tmp);
+            const o4 = (y * LW + x) * 4;
+            base[o4] = tmp[0]; base[o4 + 1] = tmp[1]; base[o4 + 2] = tmp[2]; base[o4 + 3] = 1;
+          }
+        }
+        let pushed = pushPull(base, LW, LH);
+        pushed = blurRGB(pushed, LW, LH, 5, 3, 1);
+        // 68% push-pull mempertahankan gradasi/struktur; 32% mirror meredam
+        // warna kosong yang terlalu rata dan membantu kesinambungan 360°.
+        for (let i = 0; i < fillMap.length; i++) {
+          fillMap[i] = pushed[i] * 0.68 + fillMap[i] * 0.32;
         }
       }
     } else {
