@@ -342,7 +342,11 @@
         const c = window.Flat2Pano.convert(flat.src, flat.w, flat.h, Object.assign(optPano, { fill: flat.fill }));
         if (token !== flatToken) return;
         setImage(c, c.width, c.height, flat.name + ' [2D→360°]', flat.size, { skipRatioCheck: true });
-        note.textContent = 'Hybrid selesai: gambar asli dipertahankan, area luar diperluas dengan push-pull + mirror extension, lalu dibaurkan agar panorama menyambung 360°.';
+        note.textContent = flat.fill === 'hybrid'
+          ? 'Hybrid selesai: gambar asli dipertahankan, area luar diperluas dengan push-pull + mirror extension, lalu dibaurkan agar panorama menyambung 360°.'
+          : flat.fill === 'cermin'
+            ? 'Mode Cermin selesai: area luar diperluas dengan mirror extension dan blur agar menyambung 360°.'
+            : 'Mode Halus selesai: area luar diisi dengan push-pull dan blur agar menyambung 360°.';
       } catch (e) {
         note.textContent = '';
         addBanner('error', 'Gagal mengubah gambar 2D menjadi panorama: ' + e.message);
