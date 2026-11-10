@@ -6,8 +6,8 @@
  * Cara kerja:
  *  1. Gambar diletakkan di depan kamera sebagai proyeksi perspektif (rectilinear) dengan
  *     sudut pandang horizontal tertentu, sehingga bentuk objek (mis. bulan) tetap bulat.
- *  2. Sisa bola langit diisi dengan perluasan warna gambar (push-pull) yang halus dan
- *     otomatis menyambung di sekeliling 360°.
+ *  2. Sisa bola langit diisi dengan Hybrid push-pull + mirror extension, blur, dan
+ *     blending warna agar menyambung di sekeliling 360°.
  *  3. Dekat kutub atas/bawah, warna dirata-ratakan agar tidak muncul pusaran.
  */
 window.Flat2Pano = (function () {
