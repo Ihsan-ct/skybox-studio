@@ -9,9 +9,11 @@ window.Viewer3D = (function () {
   let isVisible = false;
   let renderRequested = false;
   let containerEl = null;
+  let camCb = null;   // dipanggil tiap render: readout koordinat kamera (HUD Studio)
 
   let camYaw = 0;
-  let camPitch = 0;
+  let camPitch = -0.12;
+  const orbitFocus = new THREE.Vector3(0, -17.5, 0);   // fokus: karakter/spawn
   let velYaw = 0;
   let velPitch = 0;
   let isInertiaRunning = false;
@@ -25,10 +27,11 @@ window.Viewer3D = (function () {
 
   function updateCameraOrientation() {
     const cp = Math.cos(camPitch);
-    const targetX = Math.sin(camYaw) * cp;
-    const targetY = Math.sin(camPitch);
-    const targetZ = -Math.cos(camYaw) * cp;
-    camera.lookAt(targetX, targetY, targetZ);
+    camera.lookAt(
+      orbitFocus.x + Math.sin(camYaw) * cp * 8,
+      orbitFocus.y + Math.sin(camPitch) * 8,
+      orbitFocus.z - Math.cos(camYaw) * cp * 8
+    );
   }
 
   function requestRender() {
@@ -38,6 +41,7 @@ window.Viewer3D = (function () {
         renderRequested = false;
         if (renderer && scene && camera) {
           renderer.render(scene, camera);
+          if (camCb) camCb(camera.position, camera.fov);
         }
       });
     }
@@ -80,9 +84,11 @@ window.Viewer3D = (function () {
     containerEl = container;
     scene = new THREE.Scene();
     camera = new THREE.PerspectiveCamera(75, container.clientWidth / container.clientHeight, 0.1, 1000);
-    camera.position.set(0, 0, 0);
+    camera.position.set(0, -10, 22);
 
     renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.setSize(container.clientWidth, container.clientHeight);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     container.innerHTML = '';
@@ -137,35 +143,140 @@ window.Viewer3D = (function () {
     seamLinesGroup.visible = false;
     scene.add(seamLinesGroup);
 
-    // Baseplate Roblox
+    // Baseplate Roblox klasik (plat abu-abu bertekstur stud-grid) + SpawnLocation
     baseplateGroup = new THREE.Group();
-    const grid = new THREE.GridHelper(80, 40, 0x4a90d9, 0x343a4b);
-    grid.position.y = -20;
-    baseplateGroup.add(grid);
+
+    function makeStudTexture() {
+      const c = document.createElement('canvas'); c.width = c.height = 256;
+      const g = c.getContext('2d');
+      g.fillStyle = '#6f7378'; g.fillRect(0, 0, 256, 256);
+      for (let yy = 0; yy < 8; yy++) {
+        for (let xx = 0; xx < 8; xx++) {
+          const cx = xx * 32 + 16, cy = yy * 32 + 16;
+          g.fillStyle = '#7d8187';
+          g.beginPath(); g.arc(cx, cy, 11, 0, Math.PI * 2); g.fill();
+          g.strokeStyle = 'rgba(0,0,0,0.22)'; g.lineWidth = 2;
+          g.beginPath(); g.arc(cx, cy, 11, 0, Math.PI * 2); g.stroke();
+          g.strokeStyle = 'rgba(255,255,255,0.10)';
+          g.beginPath(); g.arc(cx, cy - 1, 10, 0, Math.PI * 2); g.stroke();
+        }
+      }
+      g.strokeStyle = 'rgba(0,0,0,0.18)'; g.lineWidth = 2;
+      for (let i = 0; i <= 8; i++) {
+        g.beginPath(); g.moveTo(i * 32, 0); g.lineTo(i * 32, 256); g.stroke();
+        g.beginPath(); g.moveTo(0, i * 32); g.lineTo(256, i * 32); g.stroke();
+      }
+      const t = new THREE.CanvasTexture(c);
+      t.wrapS = t.wrapT = THREE.RepeatWrapping;
+      t.repeat.set(48, 48);
+      return t;
+    }
+
+    function makeSpawnTexture() {
+      const c = document.createElement('canvas'); c.width = c.height = 256;
+      const g = c.getContext('2d');
+      g.fillStyle = '#9ea1a6'; g.fillRect(0, 0, 256, 256);
+      g.fillStyle = '#8b8e94'; g.fillRect(10, 10, 236, 236);
+      g.strokeStyle = '#5c5f64'; g.lineWidth = 8;
+      g.strokeRect(14, 14, 228, 228);
+      g.fillStyle = '#767a80';
+      g.beginPath(); g.arc(128, 128, 62, 0, Math.PI * 2); g.fill();
+      g.strokeStyle = '#5c5f64'; g.lineWidth = 6;
+      g.beginPath(); g.arc(128, 128, 62, 0, Math.PI * 2); g.stroke();
+      g.fillStyle = '#4d5055';
+      for (let k = 0; k < 4; k++) {
+        const a = k * Math.PI / 2 + Math.PI / 4;
+        const cx = 128 + Math.cos(a) * 38, cy = 128 + Math.sin(a) * 38;
+        g.save(); g.translate(cx, cy); g.rotate(a);
+        g.beginPath(); g.moveTo(10, 0); g.lineTo(-6, -9); g.lineTo(-6, 9); g.closePath(); g.fill();
+        g.restore();
+      }
+      return new THREE.CanvasTexture(c);
+    }
+
+    const plateTex = makeStudTexture();
+    const plateMats = [
+      new THREE.MeshLambertMaterial({ color: 0x5b5f66 }),
+      new THREE.MeshLambertMaterial({ color: 0x5b5f66 }),
+      new THREE.MeshLambertMaterial({ map: plateTex }),
+      new THREE.MeshLambertMaterial({ color: 0x4a4d52 }),
+      new THREE.MeshLambertMaterial({ color: 0x5b5f66 }),
+      new THREE.MeshLambertMaterial({ color: 0x5b5f66 })
+    ];
+    const plate = new THREE.Mesh(new THREE.BoxGeometry(190, 4, 190), plateMats);
+    plate.position.set(0, -22, 0);
+    plate.receiveShadow = true;
+    baseplateGroup.add(plate);
+
+    const spawnTex = makeSpawnTexture();
+    const spawn = new THREE.Mesh(
+      new THREE.BoxGeometry(12, 1.2, 12),
+      [
+        new THREE.MeshLambertMaterial({ color: 0x8b8e94 }),
+        new THREE.MeshLambertMaterial({ color: 0x8b8e94 }),
+        new THREE.MeshLambertMaterial({ map: spawnTex }),
+        new THREE.MeshLambertMaterial({ color: 0x6f7278 }),
+        new THREE.MeshLambertMaterial({ color: 0x8b8e94 }),
+        new THREE.MeshLambertMaterial({ color: 0x8b8e94 })
+      ]
+    );
+    spawn.position.set(0, -21.4, 0);
+    spawn.receiveShadow = true;
+    baseplateGroup.add(spawn);
+
     scene.add(baseplateGroup);
 
-    // Karakter Dummy Roblox Blocky 3D
+    // Karakter noob klasik (R6) berdiri di spawn, lengkap wajah & bayangan
     characterGroup = new THREE.Group();
-    const matHead = new THREE.MeshLambertMaterial({ color: 0xffcd34 });
-    const matTorso = new THREE.MeshLambertMaterial({ color: 0x0074d9 });
-    const matArm = new THREE.MeshLambertMaterial({ color: 0xffcd34 });
-    const matLeg = new THREE.MeshLambertMaterial({ color: 0x2ecc40 });
 
-    const head = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.2, 1.2), matHead); head.position.y = 4.6;
-    const torso = new THREE.Mesh(new THREE.BoxGeometry(2, 2, 1), matTorso); torso.position.y = 3;
-    const armL = new THREE.Mesh(new THREE.BoxGeometry(1, 2, 1), matArm); armL.position.set(-1.5, 3, 0);
-    const armR = new THREE.Mesh(new THREE.BoxGeometry(1, 2, 1), matArm); armR.position.set(1.5, 3, 0);
-    const legL = new THREE.Mesh(new THREE.BoxGeometry(1, 2, 1), matLeg); legL.position.set(-0.5, 1, 0);
-    const legR = new THREE.Mesh(new THREE.BoxGeometry(1, 2, 1), matLeg); legR.position.set(0.5, 1, 0);
+    function makeFaceTexture() {
+      const c = document.createElement('canvas'); c.width = c.height = 128;
+      const g = c.getContext('2d');
+      g.fillStyle = '#f5cd30'; g.fillRect(0, 0, 128, 128);
+      g.fillStyle = '#1b1b1b';
+      g.beginPath(); g.ellipse(43, 52, 9, 13, 0, 0, Math.PI * 2); g.fill();
+      g.beginPath(); g.ellipse(85, 52, 9, 13, 0, 0, Math.PI * 2); g.fill();
+      g.strokeStyle = '#1b1b1b'; g.lineWidth = 7; g.lineCap = 'round';
+      g.beginPath(); g.arc(64, 66, 30, 0.35 * Math.PI, 0.65 * Math.PI); g.stroke();
+      return new THREE.CanvasTexture(c);
+    }
+
+    const noob = {
+      head: 0xf5cd30, torso: 0x0d69ac, arm: 0xf5cd30, leg: 0xa4bd47
+    };
+    const headMats = [
+      new THREE.MeshLambertMaterial({ color: noob.head }),
+      new THREE.MeshLambertMaterial({ color: noob.head }),
+      new THREE.MeshLambertMaterial({ color: noob.head }),
+      new THREE.MeshLambertMaterial({ color: noob.head }),
+      new THREE.MeshLambertMaterial({ map: makeFaceTexture() }),
+      new THREE.MeshLambertMaterial({ color: noob.head })
+    ];
+    const head = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.2, 1.2), headMats);
+    head.position.y = 5.6; head.castShadow = true;
+    const torso = new THREE.Mesh(new THREE.BoxGeometry(2, 2, 1), new THREE.MeshLambertMaterial({ color: noob.torso }));
+    torso.position.y = 4; torso.castShadow = true;
+    const armL = new THREE.Mesh(new THREE.BoxGeometry(1, 2, 1), new THREE.MeshLambertMaterial({ color: noob.arm }));
+    armL.position.set(-1.5, 4, 0); armL.castShadow = true;
+    const armR = new THREE.Mesh(new THREE.BoxGeometry(1, 2, 1), new THREE.MeshLambertMaterial({ color: noob.arm }));
+    armR.position.set(1.5, 4, 0); armR.castShadow = true;
+    const legL = new THREE.Mesh(new THREE.BoxGeometry(1, 2, 1), new THREE.MeshLambertMaterial({ color: noob.leg }));
+    legL.position.set(-0.5, 2, 0); legL.castShadow = true;
+    const legR = new THREE.Mesh(new THREE.BoxGeometry(1, 2, 1), new THREE.MeshLambertMaterial({ color: noob.leg }));
+    legR.position.set(0.5, 2, 0); legR.castShadow = true;
 
     characterGroup.add(head, torso, armL, armR, legL, legR);
-    characterGroup.position.set(0, -20, -10);
-    characterGroup.scale.set(1.5, 1.5, 1.5);
+    characterGroup.position.set(0, -20, 0);
     scene.add(characterGroup);
 
-    const ambLight = new THREE.AmbientLight(0xffffff, 0.85);
-    const dirLight = new THREE.DirectionalLight(0xffffff, 0.55);
-    dirLight.position.set(5, 15, 10);
+    const ambLight = new THREE.AmbientLight(0xdfe6f2, 0.75);
+    const dirLight = new THREE.DirectionalLight(0xffffff, 0.85);
+    dirLight.position.set(18, 34, 22);
+    dirLight.castShadow = true;
+    dirLight.shadow.mapSize.set(1024, 1024);
+    dirLight.shadow.camera.left = -60; dirLight.shadow.camera.right = 60;
+    dirLight.shadow.camera.top = 60; dirLight.shadow.camera.bottom = -60;
+    dirLight.shadow.camera.far = 120;
     scene.add(ambLight, dirLight);
 
     container.addEventListener('pointerdown', e => {
@@ -313,6 +424,7 @@ window.Viewer3D = (function () {
 
   return {
     init, onResize, updateFaceTexture, setBaseplate, setCharacter, setWireframe, setFov, setVisible, requestRender,
-    onFovChange: fn => { fovListener = fn; }
+    onFovChange: fn => { fovListener = fn; },
+    onCameraMove: fn => { camCb = fn; }
   };
 })();

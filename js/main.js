@@ -885,9 +885,74 @@
 
   $('mirrorDn').addEventListener('change', e => { state.mirrorDn = e.target.checked; requestRender(); });
 
+  // ── Mode Studio: chrome ala Roblox Studio di sekeliling preview 3D ──
+  function buildStudioHud() {
+    const stage = document.getElementById('stage3d');
+    if (!stage || document.getElementById('studioHud')) return;
+    const mk = (tag, cls, html) => {
+      const e = document.createElement('div');
+      e.className = cls; e.innerHTML = html;
+      return e;
+    };
+    const hud = mk('div', 'studio-hud', '');
+    hud.id = 'studioHud';
+
+    // ribbon atas
+    hud.appendChild(mk('div', 'hud-ribbon',
+      '<span class="hud-tabs"><b class="on">Home</b><b>Model</b><b>Avatar</b><b>Test</b><b>View</b><b>Plugins</b></span>' +
+      '<span class="hud-tools">click &#183; move &#183; scale &#183; rotate &#183; transform</span>'));
+
+    // explorer + properties kanan
+    hud.appendChild(mk('div', 'hud-right',
+      '<div class="hud-panel"><div class="hud-ptitle">Explorer</div>' +
+      '<div class="hud-tree">' +
+      '<div>&#9654; &#127760; Workspace</div>' +
+      '<div class="sub">&#9635; Baseplate</div>' +
+      '<div class="sub">&#9635; SpawnLocation</div>' +
+      '<div class="sub sel">&#128100; NAKA Character</div>' +
+      '<div class="sub sel">&#127724; Sky</div>' +
+      '<div>&#9654; &#128161; Lighting</div>' +
+      '</div></div>' +
+      '<div class="hud-panel"><div class="hud-ptitle">Properties</div>' +
+      '<div class="hud-prop"><span>Name</span><b>Sky</b></div>' +
+      '<div class="hud-prop"><span>Class</span><b>Sky</b></div>' +
+      '<div class="hud-prop"><span>StarCount</span><b>3000</b></div>' +
+      '<div class="hud-prop"><span>CelestialBodies</span><b>true</b></div>' +
+      '</div>'));
+
+    // output bawah
+    hud.appendChild(mk('div', 'hud-output',
+      '<div>&#9654; NAKA Studio preview aktif &mdash; drag untuk memutar, scroll untuk FOV.</div>' +
+      '<div class="dim">Skybox dipasang via Lighting. Tekan Play untuk melihat hasil di game.</div>'));
+
+    // view cube + koordinat kamera
+    hud.appendChild(mk('div', 'hud-viewcube', '<b>FRONT</b><span>&#9633;</span>'));
+    hud.appendChild(mk('div', 'hud-cam', ''));
+    const cam = hud.querySelector('.hud-cam');
+    cam.id = 'hudCam';
+
+    stage.appendChild(hud);
+
+    // readout koordinat live dari kamera
+    if (window.Viewer3D && window.Viewer3D.onCameraMove) {
+      window.Viewer3D.onCameraMove((pos, fov) => {
+        cam.textContent = 'X ' + pos.x.toFixed(1) + '   Y ' + pos.y.toFixed(1) + '   Z ' + pos.z.toFixed(1) + '   |   FOV ' + Math.round(fov) + '°';
+      });
+    }
+    // toggle
+    const chk = document.getElementById('chkStudio');
+    if (chk) {
+      const apply = () => { hud.style.display = chk.checked ? '' : 'none'; };
+      chk.addEventListener('change', apply);
+      apply();
+    }
+  }
+
   // Inisialisasi tab default (Konversi): siapkan preview 3D sejak awal supaya
   // langit contoh / gambar pertama langsung tampil tanpa perlu klik tab dulu.
   switchTab('konversi');
+  // HUD Studio dibangun SETELAH V3D.init (init mengosongkan container stage3d).
+  buildStudioHud();
 
   // ---------- Paket Ganti-Langit (dari riwayat upload) ----------
   // Satu .rbxmx berisi folder SkyboxSets (satu Sky per skybox pilihan) + script

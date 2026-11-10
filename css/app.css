@@ -361,3 +361,42 @@ header .brand .logo-img { animation: logoPulse 4.5s ease-in-out infinite; }
 
 /* Kartu wizard bernomor */
 #rbxWizard details.group > summary, #skyPackRoot details.group > summary { letter-spacing: .01em; }
+
+/* ═══ Roblox Studio chrome (Mode Studio) ═══ */
+.studio-hud { position: absolute; inset: 0; pointer-events: none; z-index: 5; font-family: "Inter", system-ui, sans-serif; }
+.studio-hud, .studio-hud * { pointer-events: none; user-select: none; }
+.hud-ribbon {
+  position: absolute; top: 0; left: 0; right: 0; height: 30px;
+  background: linear-gradient(#333338, #26262b); border-bottom: 1px solid #151518;
+  display: flex; align-items: center; justify-content: space-between; padding: 0 10px;
+}
+.hud-tabs { display: flex; gap: 2px; }
+.hud-tabs b { color: #b9bcc4; font-weight: 500; font-size: 11.5px; padding: 3px 10px; border-radius: 4px; }
+.hud-tabs b.on { background: #3f4854; color: #fff; }
+.hud-tools { color: #8f939c; font-size: 10.5px; letter-spacing: .04em; }
+.hud-right { position: absolute; top: 32px; right: 0; bottom: 44px; width: 168px; display: flex; flex-direction: column; gap: 2px; }
+.hud-panel { background: rgba(32, 33, 37, .92); border: 1px solid #17171a; border-radius: 4px; overflow: hidden; }
+.hud-ptitle { background: #2e2f34; color: #cfd2d8; font-size: 10.5px; font-weight: 700; padding: 4px 8px; letter-spacing: .03em; }
+.hud-tree { padding: 4px 8px; color: #b4b8c0; font-size: 11px; line-height: 1.75; }
+.hud-tree .sub { padding-left: 14px; }
+.hud-tree .sel { color: #4fb3ff; font-weight: 600; }
+.hud-prop { display: flex; justify-content: space-between; padding: 2.5px 8px; font-size: 10.5px; color: #9a9ea8; }
+.hud-prop b { color: #d7dae0; font-weight: 500; }
+.hud-output {
+  position: absolute; left: 0; right: 0; bottom: 0; height: 44px;
+  background: rgba(28, 29, 33, .94); border-top: 1px solid #17171a;
+  padding: 5px 12px; color: #9fa4ad; font-size: 10.5px; line-height: 1.5;
+}
+.hud-output .dim { color: #6e727b; }
+.hud-viewcube {
+  position: absolute; top: 38px; right: 176px; width: 44px; height: 44px;
+  background: rgba(40, 41, 46, .9); border: 1px solid #4a4b52; border-radius: 6px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  color: #cfd2d8; font-size: 9px; font-weight: 700; letter-spacing: .05em;
+}
+.hud-viewcube span { font-size: 14px; color: #4fb3ff; }
+.hud-cam {
+  position: absolute; left: 10px; bottom: 48px; padding: 3px 9px;
+  background: rgba(20, 21, 24, .8); border-radius: 4px;
+  color: #9fe0ff; font-size: 10.5px; font-variant-numeric: tabular-nums; letter-spacing: .03em;
+}
