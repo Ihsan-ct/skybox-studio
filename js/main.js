@@ -391,7 +391,13 @@
 
   const refreshMode = makeFlatSeg($('segMode'),
     [{ label: 'Gambar 2D biasa', v: '2d' }, { label: 'Panorama 360°', v: 'pano' }],
-    () => flat.mode, v => { flat.mode = v; $('flatCtl').hidden = v !== '2d'; state.vOff = 0; applyFlat(); });
+    () => flat.mode, v => {
+      flat.mode = v;
+      $('flatCtl').hidden = v !== '2d';
+      $('grpPanoCtl').hidden = v !== 'pano';
+      state.vOff = 0;
+      applyFlat();
+    });
   const refreshKind = makeFlatSeg($('segKind'),
     [{ label: 'Pemandangan', v: 'scene' }, { label: 'Langit (di atas horizon)', v: 'sky' }],
     () => flat.kind, v => { flat.kind = v; scheduleFlat(); });
