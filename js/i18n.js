@@ -5,7 +5,22 @@
 window.I18N = (function () {
   const KEY = 'naka.lang';
   const DICT = {
-    id: {},
+    id: {
+      brandTag: 'Panorama 360° menjadi 6 sisi skybox Roblox. 100% diproses di browser kamu.',
+      heroTitle: 'Dari panorama 360° ke langit game Roblox kamu.',
+      navDashboard: 'Dashboard', navStudio: 'Skybox Studio',
+      tabConvert: 'Konversi', tabRoblox: 'Roblox', tabTools: 'Alat', tabPrompt: 'AI Prompt',
+      btnZip: 'Unduh ZIP', btnCross: 'Unduh Cross', btnVariants: 'Buat 4 Varian Warna',
+      chkChar: 'Karakter Roblox', chkBaseplate: 'Baseplate', chkStudioMode: 'Mode Studio', chkWireframe: 'Wireframe Seam',
+      emptyStrong: 'Mulai dalam 3 langkah',
+      step1: 'Jatuhkan gambar (panorama 2:1 atau gambar biasa — dikonversi otomatis), atau coba langit contoh di bawah.',
+      step2: 'Atur seperlunya — warna, posisi, dan watermark ada di Pengaturan Lanjutan kalau perlu.',
+      step3: 'Buka tab Roblox untuk mengunggah 6 sisi dan memasangnya ke game.',
+      smpSiang: 'Coba: Siang Cerah', smpSenja: 'Coba: Senja', smpMalam: 'Coba: Malam Berbintang',
+      smpAurora: 'Coba: Aurora', smpNebula: 'Coba: Nebula', smpHoror: 'Coba: Kabut Horor',
+      sumAdvanced: 'Pengaturan Lanjutan', sumRes: 'Resolusi ekspor',
+      noteRes: '1024 adalah default yang aman (Roblox menurunkan tekstur ke 1024). Pilih 4096 untuk keperluan di luar Roblox seperti Blender — hasil lebih tajam sebelum dikompres.'
+    },
     en: {
       brandTag: 'Panorama 360\u00B0 into 6 Roblox skybox faces. 100% processed in your browser.',
       tabConvert: 'Convert', tabRoblox: 'Roblox', tabTools: 'Tools', tabPrompt: 'AI Prompt',
