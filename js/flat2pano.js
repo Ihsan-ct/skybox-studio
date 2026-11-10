@@ -374,25 +374,68 @@ window.Flat2Pano = (function () {
     if (s01 <= 0) return;
     const W = canvas.width, H = canvas.height;
     const B = Math.max(8, Math.round(H * bandFrac));
-    const ctx = canvas.getContext('2d');
-    const slices = 8;
-    const sliceH = Math.max(2, Math.round(B / slices));
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    const img = ctx.getImageData(0, 0, W, H);
+    const d = img.data;
+
+    // 1) FADE KUTUB: baris mendekati kutub dilarutkan ke rata-rata barisnya,
+    //    sehingga di titik kutub tidak ada struktur yang 'ngercut'.
+    const fadeRow = (y, s) => {
+      let r = 0, g = 0, b = 0;
+      for (let x = 0; x < W; x++) {
+        const i4 = (y * W + x) * 4;
+        r += d[i4]; g += d[i4 + 1]; b += d[i4 + 2];
+      }
+      r /= W; g /= W; b /= W;
+      for (let x = 0; x < W; x++) {
+        const i4 = (y * W + x) * 4;
+        d[i4] = d[i4] + (r - d[i4]) * s;
+        d[i4 + 1] = d[i4 + 1] + (g - d[i4 + 1]) * s;
+        d[i4 + 2] = d[i4 + 2] + (b - d[i4 + 2]) * s;
+      }
+    };
+    const slices = 10;
+    const sliceH = Math.max(1, Math.round(B / slices));
     for (let i = 0; i < slices; i++) {
-      const blurPx = Math.round((slices - i) / slices * 26 * s01);
+      const s = s01 * (1 - i / slices) * (1 - i / slices);   // makin dekat kutub makin kuat
       // atas
-      ctx.save();
-      ctx.beginPath(); ctx.rect(0, i * sliceH, W, sliceH + 2); ctx.clip();
-      ctx.filter = 'blur(' + blurPx + 'px)';
-      ctx.drawImage(canvas, 0, 0);
-      ctx.restore();
+      for (let y = i * sliceH; y < Math.min(H, (i + 1) * sliceH); y++) fadeRow(y, s);
       // bawah
-      ctx.save();
-      ctx.beginPath(); ctx.rect(0, H - (i + 1) * sliceH, W, sliceH + 2); ctx.clip();
-      ctx.filter = 'blur(' + blurPx + 'px)';
-      ctx.drawImage(canvas, 0, 0);
-      ctx.restore();
+      for (let y = Math.max(0, H - (i + 1) * sliceH); y < H - i * sliceH; y++) fadeRow(y, s);
     }
-    ctx.filter = 'none';
+
+    // 2) WRAP-BLUR SAMBUNGAN: kolom di sekitar tepi kiri/kanan diblur dengan
+    //    pembungkusan (kolom terakhir bersebelahan dengan kolom pertama),
+    //    sehingga garis vertikal di sambungan menghilang.
+    const K = Math.max(2, Math.round(W * 0.02 * s01));
+    if (K >= 2) {
+      const wrapAvg = (y, x) => {
+        let r = 0, g = 0, b = 0, n = 0;
+        for (let k = -K; k <= K; k++) {
+          const xx = (((x + k) % W) + W) % W;
+          const i4 = (y * W + xx) * 4;
+          r += d[i4]; g += d[i4 + 1]; b += d[i4 + 2]; n++;
+        }
+        return [r / n, g / n, b / n];
+      };
+      for (let y = 0; y < H; y++) {
+        for (let x = 0; x < K; x++) {
+          const sEdge = s01 * (1 - x / K) * 0.9;   // makin dekat tepi makin kuat
+          const i4 = (y * W + x) * 4;
+          const av = wrapAvg(y, x);
+          d[i4] = d[i4] + (av[0] - d[i4]) * sEdge;
+          d[i4 + 1] = d[i4 + 1] + (av[1] - d[i4 + 1]) * sEdge;
+          d[i4 + 2] = d[i4 + 2] + (av[2] - d[i4 + 2]) * sEdge;
+          const j4 = (y * W + (W - 1 - x)) * 4;
+          const av2 = wrapAvg(y, W - 1 - x);
+          d[j4] = d[j4] + (av2[0] - d[j4]) * sEdge;
+          d[j4 + 1] = d[j4 + 1] + (av2[1] - d[j4 + 1]) * sEdge;
+          d[j4 + 2] = d[j4 + 2] + (av2[2] - d[j4 + 2]) * sEdge;
+        }
+      }
+    }
+
+    ctx.putImageData(img, 0, 0);
   }
 
   return { convert, smoothPoles };
