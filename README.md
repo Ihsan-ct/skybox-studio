@@ -177,21 +177,3 @@ gambar ditempatkan di depan kamera dengan proyeksi perspektif (objek tidak melar
 dari warna gambar dan menyambung di sekeliling 360°. Pengaturan di panel "Gambar 2D → Panorama":
 jenis isi (Pemandangan / Langit), lebar sudut pandang, geser naik/turun, dan pelembutan tepi.
 Gambar 2:1 dianggap panorama equirectangular, dan bisa diganti manual lewat tombol "Gambar 2D biasa".
-
-## AI Image-to-Image (opsional)
-
-Tab **AI Prompt** kini juga menyediakan alur generate image-to-image. Mesin converter lama tetap berjalan lokal di browser; AI hanya dipakai saat pengguna menekan tombol Generate.
-
-Konfigurasi provider dilakukan di environment server (misalnya Vercel Project Settings → Environment Variables):
-
-| Variable | Isi |
-| --- | --- |
-| `AI_IMAGE_API_URL` | Endpoint Images Edits yang kompatibel dengan format OpenAI, mis. URL endpoint provider |
-| `AI_IMAGE_API_KEY` | API key provider (server-only, jangan gunakan prefix `VITE_` / `NEXT_PUBLIC_`) |
-| `AI_IMAGE_MODEL` | ID model image editing provider |
-
-Endpoint menerima multipart fields `model`, `prompt`, `size=2048x1024`, `response_format=b64_json`, dan `image`. Provider perlu menerima format Images Edits dan mengembalikan `data[0].b64_json` atau `data[0].url`. Karena dukungan rasio/resolusi berbeda antar-provider, pastikan model yang dipilih mendukung ukuran 2048×1024. Kunci API tidak pernah dikirim ke browser.
-
-Endpoint AI hanya dapat dipakai oleh pengguna yang sudah login ke NAKA Studio. Batas awal: gambar sumber maksimal 8 MB; output maksimal 12 MB. Hasil dinormalisasi ke PNG 2048×1024 di browser sebelum dipakai oleh converter. Pemrosesan AI mengirim gambar ke provider yang kamu konfigurasi—jangan unggah gambar sensitif.
-
-Tes tambahan: `npm run test:ai`. Tes lama tetap tersedia melalui `npm test` dan `npm run test:convention`.
