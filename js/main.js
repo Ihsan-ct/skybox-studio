@@ -337,7 +337,7 @@
       if (token !== flatToken) return;
       try {
         const optPano = {
-          fov: flat.fov, pitch: flatPitch(), edge: flat.edge, maxW: Math.min(4096, GL.getMaxTex())
+          fov: flat.fov, pitch: flatPitch(), edge: flat.edge, maxW: 2048
         };
         const c = window.Flat2Pano.convert(flat.src, flat.w, flat.h, Object.assign(optPano, { fill: flat.fill }));
         if (token !== flatToken) return;
