@@ -1,9 +1,10 @@
 import assert from 'node:assert/strict';
 import handler from '../api/ai-image-to-image.js';
+import { sign, COOKIE } from '../api/_session.js';
 
 function call({ method = 'POST', headers = {}, body = {} } = {}) {
   const req = Object.assign((async function* () {})(), {
-    method, headers: { host: 'localhost:3000', ...headers }, body
+    method, headers: { host: 'localhost:3000', cookie: sessionCookie, ...headers }, body
   });
   return new Promise(resolve => {
     const res = {
@@ -16,6 +17,8 @@ function call({ method = 'POST', headers = {}, body = {} } = {}) {
   });
 }
 
+process.env.SESSION_SECRET = 'ai-image-test-session-secret';
+const sessionCookie = COOKIE + '=' + sign({ u: { id: 'test-user', name: 'Tester' } }, 3600);
 const image = 'data:image/png;base64,' + Buffer.from('fake-png-bytes').toString('base64');
 const originalFetch = globalThis.fetch;
 const originalEnv = { ...process.env };
