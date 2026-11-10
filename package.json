@@ -10,8 +10,7 @@
   "scripts": {
     "upload": "node upload-skybox.mjs",
     "test": "node test-api.mjs",
-    "test:convention": "node tests/verify-convention.mjs",
-    "test:ai": "node tests/ai-image-api.mjs"
+    "test:convention": "node tests/verify-convention.mjs"
   },
   "license": "MIT",
   "repository": {
