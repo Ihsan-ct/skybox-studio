@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tutorial · NAKA Studio</title>
+  <meta name="description" content="Panduan lengkap NAKA Studio: dari gambar biasa atau panorama 360° menjadi skybox Roblox, upload, dan pemasangan.">
+  <meta name="theme-color" content="#060a15">
+  <link rel="icon" type="image/png" href="assets/logo-icon.png">
+  <link rel="stylesheet" href="css/app.css?v=155">
+  <style>
+    .doc { max-width: 860px; margin: 0 auto; padding: 16px 16px 48px; }
+    .doc h1 { font-size: 26px; margin-bottom: 4px; }
+    .doc h2 { font-size: 18px; margin-top: 30px; }
+    .doc p, .doc li { color: var(--muted); line-height: 1.75; }
+    .doc strong { color: var(--text); }
+    .step { display: grid; grid-template-columns: 44px 1fr; gap: 14px; margin: 18px 0; align-items: start; }
+    .step .num { width: 34px; height: 34px; border-radius: 50%; background: var(--grad); color: var(--accent-ink); display: grid; place-items: center; font-weight: 800; font-family: "Space Grotesk", sans-serif; box-shadow: var(--glow); }
+    .step h3 { margin: 2px 0 4px; font-size: 15.5px; color: var(--text); }
+    .tips { background: var(--panel2); border: 1px solid var(--line-glow); border-radius: 12px; padding: 12px 16px; margin: 14px 0; }
+    .faq details { border-top: 1px solid var(--line); padding: 10px 0; }
+    .faq summary { cursor: pointer; font-weight: 600; color: var(--text); }
+    .faq p { margin: 8px 0 0; }
+    table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+    th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--line); color: var(--muted); }
+    th { color: var(--text); }
+  </style>
+</head>
+<body>
+<header>
+  <div class="brand">
+    <img class="logo-img" src="assets/logo-icon.png" alt="Logo NAKA Studio">
+    <div>
+      <h1>NAKA <span class="cy">Studio</span></h1>
+      <p>Tutorial lengkap: dari gambar menjadi skybox Roblox.</p>
+    </div>
+  </div>
+  <nav class="topnav"><a href="index.html">Dashboard</a><a href="studio.html" aria-current="page">Skybox Studio</a></nav>
+</header>
+
+<main class="doc">
+  <h1>Tutorial NAKA Studio</h1>
+  <p>Empat langkah dari satu gambar menjadi langit Roblox yang terpasang — plus tips, perbaikan masalah umum, dan FAQ.</p>
+
+  <h2>Alur cepat</h2>
+  <div class="step"><div class="num">1</div><div>
+    <h3>Unggah gambar</h3>
+    <p>Jatuhkan <strong>panorama 2:1</strong> (hasil AI dengan prompt equirectangular) atau <strong>gambar biasa</strong> ke area unggah. Panorama dipakai penuh; gambar biasa otomatis diproses <strong>Hybrid</strong> (push-pull + cermin + blending) menjadi pano 360&deg;.</p>
+  </div></div>
+  <div class="step"><div class="num">2</div><div>
+    <h3>Atur di Preview 3D</h3>
+    <p>Sesuaikan posisi, warna, Atmosphere, watermark. Mode <strong>Studio</strong> menampilkan baseplate, karakter, dan chrome Roblox agar terasa seperti di dalam place.</p>
+  </div></div>
+  <div class="step"><div class="num">3</div><div>
+    <h3>Upload 6 sisi</h3>
+    <p>Tab <strong>Roblox</strong> &rarr; login pakai Roblox (OAuth) atau API key &rarr; <strong>Upload ke Roblox</strong>. Begitu 6 sisi selesai, file <strong>Sky.rbxmx otomatis terunduh</strong> plus profil pencahayaan mengikuti mood langit.</p>
+  </div></div>
+  <div class="step"><div class="num">4</div><div>
+    <h3>Pasang di Roblox Studio</h3>
+    <p>Salin <strong>script Command Bar</strong>, tekan <strong>Ctrl+3</strong>, paste, Enter &mdash; skybox + pencahayaan langsung terpasang. Atau drag file .rbxmx ke jendela Studio.</p>
+  </div></div>
+
+  <h2>Perbaikan masalah umum</h2>
+  <div class="tips">
+    <p><strong>Panorama AI berpilin?</strong> Buka tab <strong>Alat &rarr; Perbaiki Pilinan</strong>: unggah gambar, klik pusat pilinannya di pratinjau, atur skala, lalu kirim ke Konversi.</p>
+    <p><strong>Garis vertikal di langit?</strong> Itu sambungan kiri-kanan panorama. Naikkan <strong>Rapikan Sambungan</strong> ke 40&ndash;60% &mdash; sambungan diblur otomatis.</p>
+    <p><strong>Langit ngerucut di atas?</strong> Naikkan <strong>Rapikan atas &amp; bawah</strong> ke 50&ndash;70% (mode Panorama 360&deg;) &mdash; kutub dilarutkan ke warna rata-rata.</p>
+  </div>
+
+  <h2>Mode mengisi sisi lain</h2>
+  <table>
+    <tr><th>Mode</th><th>Cocok untuk</th></tr>
+    <tr><td><strong>Hybrid</strong> (default)</td><td>Kebanyakan gambar &mdash; push-pull + cermin dibaurkan.</td></tr>
+    <tr><td><strong>Cermin lembut</strong></td><td>Scene dengan objek khas (bulan, gedung) &mdash; sisi jadi gradasi bersih.</td></tr>
+    <tr><td><strong>Warna halus</strong></td><td>Hasil paling polos, gaya klasik.</td></tr>
+    <tr><td><strong>Panorama 360&deg;</strong></td><td>Hanya untuk pano 2:1 sejati &mdash; dipakai penuh + rapikan kutub.</td></tr>
+  </table>
+
+  <h2>FAQ</h2>
+  <div class="faq">
+    <details><summary>Kenapa skybox tampil putih/abu di game?</summary><p>Aset masih dalam moderasi, atau yang terpasang adalah Decal ID (bukan Image ID). Tunggu moderasi selesai, atau ambil Image ID dari Asset Manager.</p></details>
+    <details><summary>Kenapa resolusi upload dibatasi?</summary><p>Roblox menurunkan tekstur sky ke 1024px. Resolusi 4096 tetap berguna untuk Blender/render lain.</p></details>
+    <details><summary>Aset ditolak moderasi?</summary><p>Gunakan akun alt untuk uji coba, hindari konten berhak cipta, dan coba render ulang dengan pengaturan berbeda.</p></details>
+    <details><summary>Bisa pakai tanpa login?</summary><p>Konversi, preview, dan ekspor bebas tanpa login. Login (Google/Discord/Roblox) hanya untuk upload langsung ke akun.</p></details>
+  </div>
+
+  <h2>Tools pendukung</h2>
+  <table>
+    <tr><th>Tool</th><th>Fungsi</th></tr>
+    <tr><td>Batch Convert</td><td>Banyak panorama sekaligus menjadi satu ZIP.</td></tr>
+    <tr><td>Perbaiki Pilinan</td><td>De-swirl panorama AI yang berpusar.</td></tr>
+    <tr><td>Paket Langit</td><td>36 PNG gratis (6 langit &times; 6 sisi) dalam satu ZIP.</td></tr>
+    <tr><td>Gabung 6 Sisi</td><td>Stitcher: enam sisi kembali menjadi panorama.</td></tr>
+    <tr><td>Paket Ganti-Langit</td><td>Multi-skybox + script pemasang otomatis di game.</td></tr>
+  </table>
+
+  <p style="margin-top:26px"><a class="cta primary" href="studio.html">Buka Skybox Studio</a></p>
+</main>
+<footer class="site-footer"><span>NAKA Studio &middot; Pemrosesan 100% di browser.</span><span><a href="https://github.com/Ihsan-ct/skybox-studio" target="_blank" rel="noopener">GitHub</a> &middot; MIT</span></footer>
+</body>
+</html>

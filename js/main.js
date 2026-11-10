@@ -320,14 +320,25 @@
     if (!flat.src) return;
     if (flat.mode === 'pano') {
       state.vOff = flat.vOff;
-      let src = flat.src, w = flat.w, h = flat.h;
-      if (flat.smooth > 0 && window.Flat2Pano.smoothPoles) {
-        const c = document.createElement('canvas'); c.width = w; c.height = h;
-        c.getContext('2d').drawImage(flat.src, 0, 0, w, h);
-        window.Flat2Pano.smoothPoles(c, 0.12, flat.smooth / 100);
-        src = c;
-      }
-      setImage(src, w, h, flat.name, flat.size, { skipRatioCheck: true });
+      const myToken = ++flatToken;
+      note.textContent = 'Memproses panorama di latar belakang…';
+      window.PanoAsync.convertAsync(
+        flat.src, flat.w, flat.h,
+        { fov: flat.fov, pitch: flatPitch(), edge: flat.edge, maxW: Math.min(4096, GL.getMaxTex()), fill: flat.fill },
+        flat.smooth, 0.12
+      ).then(c => {
+        if (token !== myToken) return;
+        setImage(c, c.width, c.height, flat.name + ' [2D→360°]', flat.size, { skipRatioCheck: true });
+        note.textContent = flat.fill === 'hybrid'
+          ? 'Hybrid selesai: gambar asli dipertahankan, area luar diperluas dengan push-pull + mirror extension, lalu dibaurkan agar panorama menyambung 360°.'
+          : flat.fill === 'cermin'
+            ? 'Mode Cermin selesai: area luar diperluas dengan mirror extension dan blur agar menyambung 360°.'
+            : 'Mode Halus selesai: area luar diisi dengan push-pull dan blur agar menyambung 360°.';
+      }).catch(err => {
+        if (token !== myToken) return;
+        note.textContent = '';
+        addBanner('error', 'Gagal mengubah gambar 2D menjadi panorama: ' + err.message);
+      });
       return;
     }
     const token = ++flatToken;
@@ -892,6 +903,48 @@
 
   $('mirrorDn').addEventListener('change', e => { state.mirrorDn = e.target.checked; requestRender(); });
 
+  // ── Varian warna instan: 4 thumbnail hue, klik untuk terapkan ──
+  function buildVariants() {
+    if (document.getElementById('hueVarRow')) return;
+    const row = document.createElement('div');
+    row.id = 'hueVarRow';
+    row.style.cssText = 'display:none;gap:8px;margin-top:10px;flex-wrap:wrap';
+    document.getElementById('panel-konversi').appendChild(row);
+    const btn = document.createElement('button');
+    btn.type = 'button'; btn.textContent = 'Buat 4 Varian Warna'; btn.disabled = true;
+    btn.style.marginTop = '8px';
+    row.appendChild(btn);
+    btn.addEventListener('click', () => {
+      if (!state.image) return;
+      btn.disabled = true;
+      row.querySelectorAll('.hue-thumb').forEach(t => t.remove());
+      [-90, -30, 30, 150].forEach(hue => {
+        const c = document.createElement('canvas'); c.width = 176; c.height = 132;
+        GL.setSize(176);
+        GL.drawFace(GL.FACES[0], 176, Object.assign({}, state, { hue }));
+        c.getContext('2d').drawImage(GL.glCanvas, 0, 0, 176, 176);
+        // crop tengah jadi 4:3
+        const b = document.createElement('button');
+        b.type = 'button'; b.className = 'hue-thumb';
+        b.style.cssText = 'position:relative;padding:0;overflow:hidden;border-radius:10px;min-height:100px;flex:0 1 150px';
+        b.appendChild(c);
+        const tag = document.createElement('span');
+        tag.textContent = 'Hue ' + (hue > 0 ? '+' : '') + hue;
+        tag.style.cssText = 'position:absolute;left:6px;bottom:5px;font-size:11px;color:#eaf3ff;text-shadow:0 1px 3px #000';
+        b.appendChild(tag);
+        b.addEventListener('click', () => { setSlider('hue', hue); requestRender(); });
+        row.appendChild(b);
+      });
+      btn.disabled = false;
+      row.style.display = 'flex';
+    });
+    // tombol aktif setelah gambar masuk
+    const obs = new MutationObserver(() => { btn.disabled = !state.image; });
+    obs.observe(document.getElementById('empty'), { attributes: true, attributeFilter: ['hidden'] });
+    window.__variantBtn = btn;
+  }
+  buildVariants();
+
   // ── Mode Studio: chrome ala Roblox Studio di sekeliling preview 3D ──
   function buildStudioHud() {
     const stage = document.getElementById('stage3d');
@@ -1135,6 +1188,83 @@
       if (sliders.pitch) { sliders.pitch.inp.value = state.pitch; sliders.pitch.show(); }
       requestRender();
     }
+  });
+
+  // ── Galeri Komunitas: bagikan & pakai setelan skybox antar kreator ──
+  function galleryApply(ids) {
+    window.GLConvert.FACES.forEach(f => {
+      const v = String(ids[f.k] || '').replace(/[^0-9]/g, '');
+      state.ids[f.k] = v;
+      const inp = document.getElementById('id_' + f.k);
+      if (inp) inp.value = v;
+    });
+    refreshLuau();
+  }
+  async function galleryLoad() {
+    const list = document.getElementById('galleryList');
+    const stEl = document.getElementById('galleryStatus');
+    if (!list) return;
+    list.innerHTML = '<em style="color:var(--muted);font-size:13px">Memuat…</em>';
+    try {
+      const r = await fetch('/api/gallery');
+      const d = await r.json();
+      const items = d.items || [];
+      list.textContent = '';
+      if (!items.length) {
+        const p = document.createElement('p');
+        p.className = 'note';
+        p.textContent = d.db === false
+          ? 'Galeri butuh database (Upstash) yang belum aktif di server.'
+          : 'Belum ada yang berbagi. Jadilah yang pertama!';
+        list.appendChild(p);
+        return;
+      }
+      items.forEach(it => {
+        const row = document.createElement('div');
+        row.className = 'row';
+        row.style.alignItems = 'center';
+        const info = document.createElement('span');
+        info.style.cssText = 'flex:1;font-size:13px';
+        const safeName = String(it.name).replace(/[<>&]/g, '');
+        const safeAuthor = String(it.author).replace(/[<>&]/g, '');
+        info.innerHTML = '<b style="color:var(--text)">' + safeName + '</b> · oleh ' + safeAuthor;
+        row.appendChild(info);
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.textContent = 'Pakai';
+        b.style.minHeight = '34px';
+        b.addEventListener('click', () => { galleryApply(it.ids); stEl.textContent = 'ID "' + it.name + '" dimuat ke kolom manual. Script diperbarui.'; });
+        row.appendChild(b);
+        list.appendChild(row);
+      });
+      stEl.textContent = items.length + ' skybox di galeri.';
+    } catch (e) {
+      list.innerHTML = '';
+      const p = document.createElement('p');
+      p.className = 'note';
+      p.textContent = 'Galeri tidak bisa dimuat (server/db belum aktif).';
+      list.appendChild(p);
+    }
+  }
+  const galRefresh = document.getElementById('btnGalleryRefresh');
+  if (galRefresh) galRefresh.addEventListener('click', galleryLoad);
+  const galShare = document.getElementById('btnGalleryShare');
+  if (galShare) galShare.addEventListener('click', async () => {
+    const stEl = document.getElementById('galleryStatus');
+    const all = window.GLConvert.FACES.every(f => /^\d+$/.test(String(state.ids[f.k] || '').trim()));
+    if (!all) { stEl.textContent = 'Selesaikan upload / isi 6 ID dulu sebelum berbagi.'; return; }
+    const name = prompt('Nama skybox untuk galeri:', state.image ? state.image.name.replace(/\.[^.]+$/, '') : 'Sky NAKA');
+    if (!name) return;
+    try {
+      const r = await fetch('/api/gallery', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, ids: state.ids })
+      });
+      const d = await r.json();
+      stEl.textContent = d.ok ? 'Tersharikan ke galeri ✓' : (d.error || 'Gagal.');
+      if (d.ok) galleryLoad();
+    } catch (e) { stEl.textContent = 'Gagal: ' + e.message; }
   });
 
   // ── Ekspor / Impor konfigurasi (JSON) — pengaturan bisa disimpan & dibagikan ──

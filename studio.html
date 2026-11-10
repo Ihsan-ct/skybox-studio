@@ -26,11 +26,15 @@
     <img class="logo-img" src="assets/logo-icon.png" alt="Logo NAKA Studio">
     <div>
       <h1>NAKA <span class="cy">Studio</span></h1>
-      <p>Panorama 360° menjadi 6 sisi skybox Roblox. 100% diproses di browser kamu.</p>
+      <p data-i18n="brandTag">Panorama 360° menjadi 6 sisi skybox Roblox. 100% diproses di browser kamu.</p>
     </div>
   </div>
   <nav class="topnav"><a href="index.html">Dashboard</a><a href="studio.html" aria-current="page">Skybox Studio</a></nav>
   <div id="authSlot" class="auth"></div>
+  <div class="lang-switch" role="group" aria-label="Pilih bahasa" style="display:inline-flex;border:1px solid var(--line);border-radius:9px;overflow:hidden">
+    <button type="button" data-lang-btn="id" aria-pressed="true" style="border:0;padding:5px 11px;font-size:12px;background:var(--panel2);color:var(--accent);font-weight:700;cursor:pointer">ID</button>
+    <button type="button" data-lang-btn="en" aria-pressed="false" style="border:0;border-left:1px solid var(--line);padding:5px 11px;font-size:12px;background:transparent;color:var(--muted);cursor:pointer">EN</button>
+  </div>
   <div class="theme-switch" role="group" aria-label="Pilih tema">
     <button type="button" id="th-auto" data-theme="auto" aria-pressed="true">Otomatis</button>
     <button type="button" id="th-dark" data-theme="dark" aria-pressed="false">Gelap</button>
@@ -52,23 +56,23 @@
 
   <section id="sec-preview" class="card" aria-label="Hasil">
     <div class="tabs" role="tablist" aria-label="Bagian aplikasi">
-      <button role="tab" id="tab-konversi" aria-selected="true" aria-controls="panel-konversi" tabindex="0" type="button">Konversi</button>
-      <button role="tab" id="tab-roblox" aria-selected="false" aria-controls="panel-roblox" tabindex="-1" type="button">Roblox</button>
-      <button role="tab" id="tab-alat" aria-selected="false" aria-controls="panel-alat" tabindex="-1" type="button">Alat</button>
-      <button role="tab" id="tab-prompt" aria-selected="false" aria-controls="panel-prompt" tabindex="-1" type="button">AI Prompt</button>
+      <button role="tab" id="tab-konversi" aria-selected="true" aria-controls="panel-konversi" tabindex="0" type="button" data-i18n="tabConvert">Konversi</button>
+      <button role="tab" id="tab-roblox" aria-selected="false" aria-controls="panel-roblox" tabindex="-1" type="button" data-i18n="tabRoblox">Roblox</button>
+      <button role="tab" id="tab-alat" aria-selected="false" aria-controls="panel-alat" tabindex="-1" type="button" data-i18n="tabTools">Alat</button>
+      <button role="tab" id="tab-prompt" aria-selected="false" aria-controls="panel-prompt" tabindex="-1" type="button" data-i18n="tabPrompt">AI Prompt</button>
       <span class="spacer"></span>
-      <button id="btnCrossPng" type="button" disabled>Unduh Cross</button>
-      <button id="btnZip" class="primary" type="button" disabled>Unduh ZIP</button>
+      <button id="btnCrossPng" type="button" disabled data-i18n="btnCross">Unduh Cross</button>
+      <button id="btnZip" class="primary" type="button" disabled data-i18n="btnZip">Unduh ZIP</button>
     </div>
 
     <!-- ═══ KONVERSI: preview 3D (default) + toggle cross 2D ═══ -->
     <div id="panel-konversi" class="no-img" role="tabpanel" aria-labelledby="tab-konversi">
       <div id="empty">
-        <strong>Mulai dalam 3 langkah</strong>
+        <strong data-i18n="emptyStrong">Mulai dalam 3 langkah</strong>
         <ol>
-          <li>Jatuhkan gambar (panorama 2:1 atau gambar biasa — dikonversi otomatis), atau coba langit contoh di bawah.</li>
-          <li>Atur seperlunya — warna, posisi, dan watermark ada di <em>Pengaturan Lanjutan</em> kalau perlu.</li>
-          <li>Buka tab <strong>Roblox</strong> untuk mengunggah 6 sisi dan memasangnya ke game.</li>
+          <li data-i18n="step1">Jatuhkan gambar (panorama 2:1 atau gambar biasa — dikonversi otomatis), atau coba langit contoh di bawah.</li>
+          <li data-i18n="step2">Atur seperlunya — warna, posisi, dan watermark ada di <em>Pengaturan Lanjutan</em> kalau perlu.</li>
+          <li data-i18n="step3">Buka tab <strong>Roblox</strong> untuk mengunggah 6 sisi dan memasangnya ke game.</li>
         </ol>
         <div class="row" style="gap:8px;flex-wrap:wrap">
           <button id="smpSiang" type="button">☀️ Coba: Siang Cerah</button>
@@ -88,10 +92,10 @@
         <div id="status" role="status" aria-live="polite"></div>
       </div>
       <div class="konv-controls">
-        <label class="check"><input type="checkbox" id="chkCharacter" checked> Karakter Roblox</label>
-        <label class="check"><input type="checkbox" id="chkBaseplate" checked> Baseplate</label>
-        <label class="check"><input type="checkbox" id="chkStudio" checked> Mode Studio</label>
-        <label class="check"><input type="checkbox" id="chkWireframe"> Wireframe Seam</label>
+        <label class="check"><input type="checkbox" id="chkCharacter" checked> ><span data-i18n="chkChar">arakter Roblox</label>
+        <label class="check"><input type="checkbox" id="chkBaseplate" checked> ><span data-i18n="chkBaseplate">aseplate</label>
+        <label class="check"><input type="checkbox" id="chkStudio" checked> ><span data-i18n="chkStudioMode">ode Studio</label>
+        <label class="check"><input type="checkbox" id="chkWireframe"> ><span data-i18n="chkWireframe">ireframe Seam</label>
         <div class="slider">
           <label>FOV: <output id="out_fov">75</output></label>
           <input type="range" id="s_fov" min="40" max="100" value="75">
@@ -142,6 +146,17 @@
         <p class="note" style="margin-top:6px">Cara pakai script: di Roblox Studio buka <em>View &gt; Command Bar</em> (atau tekan <strong>Ctrl+3</strong>), paste script, tekan <strong>Enter</strong> — skybox langsung terpasang di Lighting tanpa bikin Script manual.</p>
 
         <div id="skyPackRoot" style="margin-top:12px"></div>
+
+        <details class="group" style="margin-top:12px">
+          <summary>Galeri Komunitas</summary>
+          <p style="margin-top:6px">Jelajahi skybox buatan kreator lain &mdash; tekan <em>Pakai</em> untuk memuat ID-nya, atau bagikan hasil lu (butuh login &amp; database aktif).</p>
+          <div id="galleryList" style="margin:8px 0"><em style="color:var(--muted);font-size:13px">Memuat&hellip;</em></div>
+          <div class="row">
+            <button type="button" id="btnGalleryRefresh" style="min-height:36px;font-size:13px">Muat ulang</button>
+            <button type="button" id="btnGalleryShare" class="primary" style="min-height:36px;font-size:13px">Bagikan skybox saat ini</button>
+            <span id="galleryStatus" role="status" style="font-size:13px;color:var(--muted)"></span>
+          </div>
+        </details>
 
         <details class="group" style="margin-top:12px">
           <summary>Sudah punya Image ID? Isi manual</summary>
@@ -201,12 +216,12 @@
       </div>
     </details>
     <details class="group" open>
-      <summary>Resolusi ekspor</summary>
+      <summary data-i18n="sumRes">Resolusi ekspor</summary>
       <div class="seg" id="segRes" role="group"></div>
       <p class="note">1024 adalah default yang aman (Roblox menurunkan tekstur ke 1024). Pilih 4096 untuk keperluan di luar Roblox seperti Blender - hasil lebih tajam sebelum dikompres.</p>
     </details>
     <details class="group">
-      <summary>Pengaturan Lanjutan</summary>
+      <summary data-i18n="sumAdvanced">Pengaturan Lanjutan</summary>
       <p class="note" style="margin-top:4px">Buat hasil default sudah bagus. Buka bagian ini kalau mau menyetel lebih dalam.</p>
 
       <div class="seglabel">Posisi &amp; Horizon</div>
@@ -263,7 +278,8 @@
 <script src="js/auth.js?v=152"></script>
 <script src="js/vault.js?v=152"></script>
 <script src="js/roblox-upload.js?v=152"></script>
-<script src="js/flat2pano.js?v=152"></script>
+<script src="js/flat2pano.js?v=153"></script>
+<script src="js/pano-async.js?v=153"></script>
 <script src="js/main.js?v=152"></script>
 </body>
 </html>
