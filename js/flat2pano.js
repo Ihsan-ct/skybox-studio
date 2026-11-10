@@ -452,7 +452,7 @@ window.Flat2Pano = (function () {
 
     const out = document.createElement('canvas');
     out.width = W; out.height = H;
-    const og = out.getContext('2d');
+    const og = out.getContext('2d', { willReadFrequently: true });
     const img = og.createImageData(W, H);
     const od = img.data;
 
@@ -465,6 +465,8 @@ window.Flat2Pano = (function () {
         let sx;
         if (u < 0.5) sx = u * 2 * pw;
         else sx = (1 - u) * 2 * pw;
+        // Catat: clamp ke pw-1 membuat kolom tepat u=0.5 membaca kolom terakhir
+        // gambar secara murni (tanpa interpolasi) — samarkan di bawah.
         sx = Math.min(pw - 1, Math.max(0, sx));
         const x0 = sx | 0, x1 = Math.min(pw - 1, x0 + 1), fx = sx - x0;
         const i00 = (y0 * pw + x0) * 4, i10 = (y0 * pw + x1) * 4;
@@ -480,8 +482,71 @@ window.Flat2Pano = (function () {
       }
     }
     og.putImageData(img, 0, 0);
+
+    // Samarkan kolom anomali di lipatan tengah (u=0.5): kolom tepat di sambungan
+    // membaca kolom terakhir gambar secara murni (tanpa interpolasi), sehingga
+    // tepi gambar bisa muncul sebagai garis 1px. Band sempit di sekitar tengah
+    // di-blur horizontal — aman karena kedua sisi adalah cermin satu sama lain.
+    const K3 = Math.max(6, Math.round(W * 0.008));
+    const folded = og.getImageData(0, 0, W, H);
+    const fd = folded.data;
+    const mid = W >> 1;
+    for (let y = 0; y < H; y++) {
+      for (let x = mid - K3; x < mid + K3; x++) {
+        const t = smoothstep(0, 1, 1 - Math.abs(x + 0.5 - mid) / K3);
+        if (t <= 0) continue;
+        let r = 0, g = 0, b = 0, n = 0;
+        for (let k = -K3; k <= K3; k++) {
+          const xx = Math.min(W - 1, Math.max(0, x + k));
+          const o = (y * W + xx) * 4;
+          r += fd[o]; g += fd[o + 1]; b += fd[o + 2]; n++;
+        }
+        r /= n; g /= n; b /= n;
+        const i4 = (y * W + x) * 4;
+        fd[i4] += (r - fd[i4]) * t;
+        fd[i4 + 1] += (g - fd[i4 + 1]) * t;
+        fd[i4 + 2] += (b - fd[i4 + 2]) * t;
+      }
+    }
+    og.putImageData(folded, 0, 0);
     return out;
   }
 
-  return { convert, convertMirror, smoothPoles };
+  // ── Mode PENUH v2: satu gambar dipakai penuh — u 0..1 = gambar asli
+  //    (direntangkan horizontal menutup 360°), v 0..1 = full stretch ke kutub.
+  //    Tanpa mirror: tidak ada matahari ganda, chevron, maupun seam tengah. ──
+  function convertFull(src, sw, sh, o) {
+    const maxW = o.maxW || 4096;
+    let W = Math.max(1024, Math.min(maxW, 2048));
+    W = Math.round(W / 2) * 2;
+    const H = W / 2;
+
+    const out = document.createElement('canvas');
+    out.width = W; out.height = H;
+    const og = out.getContext('2d', { willReadFrequently: true });
+    og.imageSmoothingEnabled = true;
+    og.imageSmoothingQuality = 'high';
+    og.drawImage(src, 0, 0, W, H);
+
+    // Baurkan sambungan kiri↔kanan (u=0/1): band sempit di tepi kiri digradasi
+    // dari konten tepi kanan ke konten kiri, sehingga titik sambungan 360° di
+    // belakang skybox menjadi gradasi lembut, bukan garis keras.
+    const K2 = Math.max(32, Math.round(W * 0.035));
+    const wrapped = og.getImageData(0, 0, W, H);
+    const wd = wrapped.data;
+    for (let y = 0; y < H; y++) {
+      for (let x = 0; x < K2; x++) {
+        const t = smoothstep(0, 1, (x + 0.5) / K2);
+        const i4 = (y * W + x) * 4;
+        const j4 = (y * W + (W - K2 + x)) * 4;
+        for (let ch = 0; ch < 3; ch++) {
+          wd[i4 + ch] = wd[j4 + ch] * (1 - t) + wd[i4 + ch] * t;
+        }
+      }
+    }
+    og.putImageData(wrapped, 0, 0);
+    return out;
+  }
+
+  return { convert, convertMirror, convertFull, smoothPoles };
 })();

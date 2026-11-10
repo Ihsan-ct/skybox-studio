@@ -306,11 +306,13 @@
       ).then(c => {
         if (token !== myToken) return;
         setImage(c, c.width, c.height, flat.name + ' [2D→360°]', flat.size, { skipRatioCheck: true });
-        note.textContent = flat.fill === 'hybrid'
-          ? 'Hybrid selesai: gambar asli dipertahankan, area luar diperluas dengan push-pull + mirror extension, lalu dibaurkan agar panorama menyambung 360°.'
-          : flat.fill === 'cermin'
-            ? 'Mode Cermin selesai: area luar diperluas dengan mirror extension dan blur agar menyambung 360°.'
-            : 'Mode Halus selesai: area luar diisi dengan push-pull dan blur agar menyambung 360°.';
+        note.textContent = flat.fill === 'penuh' || flat.fill === 'penuhcermin'
+          ? 'Panorama 360° selesai diproses.'
+          : flat.fill === 'hybrid'
+            ? 'Hybrid selesai: gambar asli dipertahankan, area luar diperluas dengan push-pull + mirror extension, lalu dibaurkan agar panorama menyambung 360°.'
+            : flat.fill === 'cermin'
+              ? 'Mode Cermin selesai: area luar diperluas dengan mirror extension dan blur agar menyambung 360°.'
+              : 'Mode Halus selesai: area luar diisi dengan push-pull dan blur agar menyambung 360°.';
       }).catch(err => {
         if (token !== myToken) return;
         note.textContent = '';
@@ -328,19 +330,25 @@
           fov: flat.fov, pitch: flatPitch(), edge: flat.edge, maxW: Math.min(4096, GL.getMaxTex())
         };
         let c;
-        if (flat.fill === 'penuh') {
-          c = window.Flat2Pano.convertMirror(flat.src, flat.w, flat.h, optPano);
+        if (flat.fill === 'penuh' || flat.fill === 'penuhcermin') {
+          c = flat.fill === 'penuh'
+            ? window.Flat2Pano.convertFull(flat.src, flat.w, flat.h, optPano)
+            : window.Flat2Pano.convertMirror(flat.src, flat.w, flat.h, optPano);
           if (flat.smooth > 0) window.Flat2Pano.smoothPoles(c, 0.14, flat.smooth / 100);
         } else {
           c = window.Flat2Pano.convert(flat.src, flat.w, flat.h, Object.assign(optPano, { fill: flat.fill }));
         }
         if (token !== flatToken) return;
         setImage(c, c.width, c.height, flat.name + ' [2D→360°]', flat.size, { skipRatioCheck: true });
-        note.textContent = flat.fill === 'hybrid'
-          ? 'Hybrid selesai: gambar asli dipertahankan, area luar diperluas dengan push-pull + mirror extension, lalu dibaurkan agar panorama menyambung 360°.'
-          : flat.fill === 'cermin'
-            ? 'Mode Cermin selesai: area luar diperluas dengan mirror extension dan blur agar menyambung 360°.'
-            : 'Mode Halus selesai: area luar diisi dengan push-pull dan blur agar menyambung 360°.';
+        note.textContent = flat.fill === 'penuh'
+          ? 'Mode Penuh selesai: gambar dipakai penuh — direntangkan menutup seluruh 360° dan vertikal sampai kutub.'
+          : flat.fill === 'penuhcermin'
+            ? 'Mode Penuh Cermin selesai: [gambar asli | cermin] menutup 360° ala TC, direntangkan sampai kutub.'
+            : flat.fill === 'hybrid'
+              ? 'Hybrid selesai: gambar asli dipertahankan, area luar diperluas dengan push-pull + mirror extension, lalu dibaurkan agar panorama menyambung 360°.'
+              : flat.fill === 'cermin'
+                ? 'Mode Cermin selesai: area luar diperluas dengan mirror extension dan blur agar menyambung 360°.'
+                : 'Mode Halus selesai: area luar diisi dengan push-pull dan blur agar menyambung 360°.';
       } catch (e) {
         note.textContent = '';
         addBanner('error', 'Gagal mengubah gambar 2D menjadi panorama: ' + e.message);
@@ -420,6 +428,8 @@
     $('grpPanoCtl').hidden = flat.mode !== 'pano';
   }
   $('flatFill').addEventListener('change', e => { flat.fill = e.target.value; scheduleFlat(); });
+  // Selaraskan select dengan default state (flat.fill='penuh') agar UI tidak menampilkan mode lain.
+  if (Array.from($('flatFill').options).some(o => o.value === flat.fill)) $('flatFill').value = flat.fill;
   $('s_polesmooth').addEventListener('input', e => {
     flat.smooth = Number(e.target.value);
     $('out_polesmooth').textContent = flat.smooth + '%';
