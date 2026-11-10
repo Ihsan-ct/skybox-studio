@@ -336,7 +336,7 @@
             : window.Flat2Pano.convertMirror(flat.src, flat.w, flat.h, optPano);
           // Mode penuh menaruh tepi gambar persis di kutub — butuh band lebih
           // luas dan rapikan lebih kuat agar kutub benar-benar rapi.
-          if (flat.smooth > 0) window.Flat2Pano.smoothPoles(c, 0.22, Math.min(1, 0.5 + flat.smooth / 100));
+          if (flat.smooth > 0) window.Flat2Pano.smoothPoles(c, 0.30, Math.min(1, 0.55 + flat.smooth / 100));
         } else {
           c = window.Flat2Pano.convert(flat.src, flat.w, flat.h, Object.assign(optPano, { fill: flat.fill }));
         }

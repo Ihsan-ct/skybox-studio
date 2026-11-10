@@ -413,7 +413,9 @@ window.Flat2Pano = (function () {
     };
     const topSm = smoothAvg(topAvg), botSm = smoothAvg(botAvg);
     for (let i = 0; i < B; i++) {
-      const s = s01 * Math.pow(1 - (i + 0.5) / B, 1.6);   // kontinu: makin dekat kutub makin kuat
+      // falloff landai (pow 0.8): fade tetap terasa sampai tengah band,
+      // supaya awan yang mengelilingi kutub ikut melunak.
+      const s = s01 * Math.pow(1 - (i + 0.5) / B, 0.8);
       const at = i * 3, ab = at;
       for (let x = 0; x < W; x++) {
         const i4 = (i * W + x) * 4;                        // atas
@@ -425,6 +427,36 @@ window.Flat2Pano = (function () {
         d[j4 + 1] += (botSm[ab + 1] - d[j4 + 1]) * s;
         d[j4 + 2] += (botSm[ab + 2] - d[j4 + 2]) * s;
       }
+    }
+
+    // 1b) BLUR HORIZONTAL MENGHAMPIRI KUTUB: wisps & awan kecil yang tersisa
+    //     dihaluskan menjadi gradasi lebar — menghilangkan kesan pusaran di
+    //     zenith tanpa menghapus warna alami langit.
+    const Kb = Math.round(W * 0.10);
+    for (let i = 0; i < B; i++) {
+      const r = Math.round(Kb * Math.pow(1 - (i + 0.5) / B, 1.2));
+      if (r < 1) continue;
+      const blurRow = (y) => {
+        // prefix sum per channel (wrap tidak perlu: kutub bukan sambungan)
+        const ps = new Float64Array((W + 1) * 3);
+        for (let x = 0; x < W; x++) {
+          const i4 = (y * W + x) * 4;
+          ps[(x + 1) * 3] = ps[x * 3] + d[i4];
+          ps[(x + 1) * 3 + 1] = ps[x * 3 + 1] + d[i4 + 1];
+          ps[(x + 1) * 3 + 2] = ps[x * 3 + 2] + d[i4 + 2];
+        }
+        for (let x = 0; x < W; x++) {
+          const a = x - r < 0 ? 0 : x - r, b2 = x + r > W - 1 ? W - 1 : x + r;
+          const n = b2 - a + 1;
+          const i4 = (y * W + x) * 4;
+          for (let c = 0; c < 3; c++) {
+            const av = (ps[(b2 + 1) * 3 + c] - ps[a * 3 + c]) / n;
+            d[i4 + c] += (av - d[i4 + c]) * 0.9;
+          }
+        }
+      };
+      blurRow(i);
+      blurRow(H - 1 - i);
     }
 
     // 2) WRAP-BLUR SAMBUNGAN: kolom di sekitar tepi kiri/kanan diblur dengan
