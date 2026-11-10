@@ -1,4 +1,5 @@
 import { guard } from './_guard.js';
+import { requireUser } from './_session.js';
 
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
 const MAX_OUTPUT_BYTES = 12 * 1024 * 1024;
@@ -35,6 +36,7 @@ function safeMessage(value) {
 
 export default async function handler(req, res) {
   if (!guard(req, res)) return;
+  if (!requireUser(req, res)) return;
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST');
     return json(res, 405, { error: 'Method tidak didukung.' });
