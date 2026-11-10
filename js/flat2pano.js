@@ -528,9 +528,10 @@ window.Flat2Pano = (function () {
     og.imageSmoothingQuality = 'high';
     og.drawImage(src, 0, 0, W, H);
 
-    // Baurkan sambungan kiri↔kanan (u=0/1): band sempit di tepi kiri digradasi
-    // dari konten tepi kanan ke konten kiri, sehingga titik sambungan 360° di
-    // belakang skybox menjadi gradasi lembut, bukan garis keras.
+    // Sambungkan tepi kiri↔kanan (u=0/1): band sempit di tepi kiri mengambil
+    // cermin konten tepi kanan (kolom W-1-x), lalu dibaurkan ke konten kiri.
+    // Kolom 0 = kolom W-1 ⇒ titik sambungan 360° kontinu sempurna, dan
+    // transisi ke konten kiri menjadi gradasi lembut (band K2).
     const K2 = Math.max(32, Math.round(W * 0.035));
     const wrapped = og.getImageData(0, 0, W, H);
     const wd = wrapped.data;
@@ -538,7 +539,7 @@ window.Flat2Pano = (function () {
       for (let x = 0; x < K2; x++) {
         const t = smoothstep(0, 1, (x + 0.5) / K2);
         const i4 = (y * W + x) * 4;
-        const j4 = (y * W + (W - K2 + x)) * 4;
+        const j4 = (y * W + (W - 1 - x)) * 4;
         for (let ch = 0; ch < 3; ch++) {
           wd[i4 + ch] = wd[j4 + ch] * (1 - t) + wd[i4 + ch] * t;
         }
