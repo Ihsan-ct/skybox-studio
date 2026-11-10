@@ -279,7 +279,7 @@
 
 
   // ---------- Gambar 2D biasa -> panorama 360° otomatis ----------
-  const flat = { src: null, w: 0, h: 0, name: '', size: null, mode: '2d', kind: 'scene', fov: 100, offset: 0, edge: 18, fill: 'hybrid', smooth: 30, vOff: 0 };
+  const flat = { src: null, w: 0, h: 0, name: '', size: null, mode: '2d', kind: 'scene', fov: 100, offset: 0, edge: 18, fill: 'penuh', smooth: 30, vOff: 0 };
   let flatTimer = null, flatToken = 0;
 
   function flatPitch() {
@@ -327,7 +327,13 @@
         const optPano = {
           fov: flat.fov, pitch: flatPitch(), edge: flat.edge, maxW: Math.min(4096, GL.getMaxTex())
         };
-        const c = window.Flat2Pano.convert(flat.src, flat.w, flat.h, Object.assign(optPano, { fill: flat.fill }));
+        let c;
+        if (flat.fill === 'penuh') {
+          c = window.Flat2Pano.convertMirror(flat.src, flat.w, flat.h, optPano);
+          if (flat.smooth > 0) window.Flat2Pano.smoothPoles(c, 0.14, flat.smooth / 100);
+        } else {
+          c = window.Flat2Pano.convert(flat.src, flat.w, flat.h, Object.assign(optPano, { fill: flat.fill }));
+        }
         if (token !== flatToken) return;
         setImage(c, c.width, c.height, flat.name + ' [2D→360°]', flat.size, { skipRatioCheck: true });
         note.textContent = flat.fill === 'hybrid'
