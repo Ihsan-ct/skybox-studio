@@ -935,8 +935,8 @@
 
     // readout koordinat live dari kamera
     if (window.Viewer3D && window.Viewer3D.onCameraMove) {
-      window.Viewer3D.onCameraMove((pos, fov) => {
-        cam.textContent = 'X ' + pos.x.toFixed(1) + '   Y ' + pos.y.toFixed(1) + '   Z ' + pos.z.toFixed(1) + '   |   FOV ' + Math.round(fov) + '°';
+      window.Viewer3D.onCameraMove((rot, fov) => {
+        cam.textContent = 'Yaw ' + Math.round(rot.yaw) + '°   Pitch ' + Math.round(rot.pitch) + '°   |   FOV ' + Math.round(fov) + '°';
       });
     }
     // toggle

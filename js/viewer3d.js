@@ -12,8 +12,7 @@ window.Viewer3D = (function () {
   let camCb = null;   // dipanggil tiap render: readout koordinat kamera (HUD Studio)
 
   let camYaw = 0;
-  let camPitch = -0.12;
-  const orbitFocus = new THREE.Vector3(0, -17.5, 0);   // fokus: karakter/spawn
+  let camPitch = -0.18;
   let velYaw = 0;
   let velPitch = 0;
   let isInertiaRunning = false;
@@ -28,9 +27,9 @@ window.Viewer3D = (function () {
   function updateCameraOrientation() {
     const cp = Math.cos(camPitch);
     camera.lookAt(
-      orbitFocus.x + Math.sin(camYaw) * cp * 8,
-      orbitFocus.y + Math.sin(camPitch) * 8,
-      orbitFocus.z - Math.cos(camYaw) * cp * 8
+      Math.sin(camYaw) * cp * 8,
+      Math.sin(camPitch) * 8,
+      -Math.cos(camYaw) * cp * 8
     );
   }
 
@@ -41,7 +40,7 @@ window.Viewer3D = (function () {
         renderRequested = false;
         if (renderer && scene && camera) {
           renderer.render(scene, camera);
-          if (camCb) camCb(camera.position, camera.fov);
+          if (camCb) camCb({ yaw: camYaw * 180 / Math.PI, pitch: camPitch * 180 / Math.PI }, camera.fov);
         }
       });
     }
@@ -84,7 +83,7 @@ window.Viewer3D = (function () {
     containerEl = container;
     scene = new THREE.Scene();
     camera = new THREE.PerspectiveCamera(75, container.clientWidth / container.clientHeight, 0.1, 1000);
-    camera.position.set(0, -10, 22);
+    camera.position.set(0, 0, 0);
 
     renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
     renderer.shadowMap.enabled = true;
@@ -204,7 +203,7 @@ window.Viewer3D = (function () {
       new THREE.MeshLambertMaterial({ color: 0x5b5f66 })
     ];
     const plate = new THREE.Mesh(new THREE.BoxGeometry(190, 4, 190), plateMats);
-    plate.position.set(0, -22, 0);
+    plate.position.set(0, -16, 0);
     plate.receiveShadow = true;
     baseplateGroup.add(plate);
 
@@ -220,7 +219,7 @@ window.Viewer3D = (function () {
         new THREE.MeshLambertMaterial({ color: 0x8b8e94 })
       ]
     );
-    spawn.position.set(0, -21.4, 0);
+    spawn.position.set(0, -13.9, -10);
     spawn.receiveShadow = true;
     baseplateGroup.add(spawn);
 
@@ -266,7 +265,7 @@ window.Viewer3D = (function () {
     legR.position.set(0.5, 2, 0); legR.castShadow = true;
 
     characterGroup.add(head, torso, armL, armR, legL, legR);
-    characterGroup.position.set(0, -20, 0);
+    characterGroup.position.set(0, -13.3, -10);
     scene.add(characterGroup);
 
     const ambLight = new THREE.AmbientLight(0xdfe6f2, 0.75);
@@ -365,7 +364,7 @@ window.Viewer3D = (function () {
       requestRender();
     });
 
-    camYaw = 0; camPitch = 0;
+    camYaw = 0; camPitch = -0.18;
     updateCameraOrientation();
     isVisible = true;
     isInitialized = true;
