@@ -415,3 +415,129 @@ header .brand .logo-img { animation: logoPulse 4.5s ease-in-out infinite; }
   #empty ol { font-size: 13px; }
   .hero { padding: 20px 16px; }
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   SKY LUXE — lapisan tampilan megah (v1.9)
+   Aurora langit malam + bintang + kartu kaca + tombol berkilau.
+   Lapisan override: diletakkan paling akhir agar menang di cascade.
+   ═══════════════════════════════════════════════════════════════ */
+
+@keyframes nakaAurora {
+  0%   { transform: translate3d(0, 0, 0) scale(1);    opacity: .85; }
+  50%  { transform: translate3d(-2.5%, 1.8%, 0) scale(1.06); opacity: 1; }
+  100% { transform: translate3d(2%, -1.5%, 0) scale(1.02);  opacity: .9; }
+}
+@keyframes nakaTwinkle {
+  0%   { opacity: .30; }
+  100% { opacity: .70; }
+}
+@keyframes nakaFadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* Aurora & bintang: fixed di belakang konten, di atas latar dasar */
+body::before {
+  content: ""; position: fixed; inset: -22%; z-index: -1; pointer-events: none;
+  background:
+    radial-gradient(46rem 30rem at 16% 10%, rgba(47, 140, 255, .17), transparent 62%),
+    radial-gradient(40rem 26rem at 84% 16%, rgba(53, 220, 255, .11), transparent 64%),
+    radial-gradient(56rem 34rem at 52% 112%, rgba(122, 92, 255, .13), transparent 64%),
+    radial-gradient(30rem 20rem at 70% 60%, rgba(23, 96, 210, .10), transparent 66%);
+  filter: saturate(1.2);
+  animation: nakaAurora 26s ease-in-out infinite alternate;
+}
+body::after {
+  content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
+  background-image:
+    radial-gradient(1.6px 1.6px at 11% 18%, rgba(255,255,255,.75) 44%, transparent 56%),
+    radial-gradient(1.2px 1.2px at 27% 61%, rgba(255,255,255,.55) 44%, transparent 56%),
+    radial-gradient(1.8px 1.8px at 42% 9%,  rgba(190,225,255,.65) 44%, transparent 56%),
+    radial-gradient(1.2px 1.2px at 58% 33%, rgba(255,255,255,.5) 44%, transparent 56%),
+    radial-gradient(1.5px 1.5px at 73% 71%, rgba(210,235,255,.6) 44%, transparent 56%),
+    radial-gradient(1.2px 1.2px at 88% 24%, rgba(255,255,255,.55) 44%, transparent 56%),
+    radial-gradient(1.6px 1.6px at 94% 52%, rgba(190,225,255,.5) 44%, transparent 56%),
+    radial-gradient(1.2px 1.2px at 7% 79%,  rgba(255,255,255,.45) 44%, transparent 56%),
+    radial-gradient(1.4px 1.4px at 34% 88%, rgba(210,235,255,.5) 44%, transparent 56%),
+    radial-gradient(1.2px 1.2px at 66% 12%, rgba(255,255,255,.5) 44%, transparent 56%);
+  opacity: .5;
+  animation: nakaTwinkle 9s ease-in-out infinite alternate;
+}
+@media (prefers-reduced-motion: reduce) {
+  body::before, body::after { animation: none; }
+}
+
+/* Tema terang: aurora dipudarkan, bintang disembunyikan */
+:root[data-theme="light"] body::after,
+:root[data-theme="light"] body::before { display: none; }
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) body::after,
+  :root:not([data-theme="dark"]) body::before { display: none; }
+}
+
+/* Tipografi tampilan untuk judul & brand */
+header .brand h1, h2, .hero h1 {
+  font-family: "Plus Jakarta Sans", "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+header .brand h1 { font-size: 21px; letter-spacing: .02em; }
+header .brand .logo-img {
+  width: 40px; height: 40px; border-radius: 11px;
+  filter: drop-shadow(0 0 12px rgba(63, 182, 255, .55)) drop-shadow(0 0 26px rgba(53, 220, 255, .25));
+}
+header .brand p { letter-spacing: .015em; }
+
+/* Kartu kaca premium */
+.card {
+  background: color-mix(in srgb, var(--panel) 84%, transparent);
+  backdrop-filter: blur(12px) saturate(1.25);
+  -webkit-backdrop-filter: blur(12px) saturate(1.25);
+  border: 1px solid color-mix(in srgb, var(--accent) 16%, var(--line));
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, .04) inset,
+    0 18px 44px rgba(2, 8, 24, .5),
+    0 0 0 1px rgba(2, 10, 26, .35);
+  animation: nakaFadeIn .45s ease both;
+}
+
+/* Ring accent lembut di kartu unggahan & kontrol utama */
+#sec-upload { position: relative; }
+#sec-upload::before {
+  content: ""; position: absolute; inset: -1px; border-radius: inherit; pointer-events: none;
+  background: linear-gradient(120deg, rgba(47,140,255,.35), rgba(53,220,255,.12) 40%, transparent 70%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude; padding: 1px;
+}
+
+/* Tombol utama berkilau */
+button.primary, .cta.primary { position: relative; overflow: hidden; }
+button.primary::after, .cta.primary::after {
+  content: ""; position: absolute; top: 0; left: -70%; width: 45%; height: 100%;
+  background: linear-gradient(100deg, transparent, rgba(255,255,255,.38), transparent);
+  transform: skewX(-20deg); transition: left .55s ease; pointer-events: none;
+}
+button.primary:hover::after, .cta.primary:hover::after { left: 125%; }
+
+/* Dropzone bernyawa */
+#drop:hover, #drop:focus-visible {
+  border-color: var(--accent-2);
+  box-shadow: 0 0 0 1px rgba(53, 220, 255, .3), inset 0 0 30px rgba(53, 220, 255, .08);
+}
+
+/* Summary dengan aksen bercahaya */
+details.group > summary {
+  font-weight: 700; letter-spacing: .02em;
+  transition: color .15s;
+}
+details.group > summary:hover { color: var(--accent-2); }
+
+/* Scrollbar premium */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--accent) 26%, var(--panel2));
+  border-radius: 6px; border: 2px solid transparent; background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover { background: color-mix(in srgb, var(--accent) 45%, var(--panel2)); background-clip: padding-box; }
+
+/* Footer menyatu dengan langit */
+.site-footer { border-top: 1px solid var(--line-glow); background: transparent; }
