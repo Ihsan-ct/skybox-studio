@@ -17,10 +17,16 @@ from diffusers.image_processor import VaeImageProcessor
 from diffusers.loaders import LoraLoaderMixin, TextualInversionLoaderMixin
 try:
     from diffusers.models.autoencoders.vae import DecoderOutput
-except:
+except ImportError:
     from diffusers.models.vae import DecoderOutput
-from diffusers.models.controlnet import ControlNetOutput
-from diffusers.pipelines.controlnet.multicontrolnet import MultiControlNetModel
+try:
+    from diffusers.models.controlnet import ControlNetOutput
+except ImportError:
+    from diffusers.models.controlnets.controlnet import ControlNetOutput
+try:
+    from diffusers.pipelines.controlnet.multicontrolnet import MultiControlNetModel
+except ImportError:
+    from diffusers.models.controlnets.multicontrolnet import MultiControlNetModel
 from diffusers.pipelines.stable_diffusion import StableDiffusionPipelineOutput
 from diffusers.pipelines.stable_diffusion.safety_checker import \
     StableDiffusionSafetyChecker

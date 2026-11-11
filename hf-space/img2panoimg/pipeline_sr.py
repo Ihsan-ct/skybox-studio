@@ -17,9 +17,12 @@ from diffusers.loaders import LoraLoaderMixin, TextualInversionLoaderMixin
 from diffusers.models import ControlNetModel
 try:
     from diffusers.models.autoencoders.vae import DecoderOutput
-except:
+except ImportError:
     from diffusers.models.vae import DecoderOutput
-from diffusers.pipelines.controlnet.multicontrolnet import MultiControlNetModel
+try:
+    from diffusers.pipelines.controlnet.multicontrolnet import MultiControlNetModel
+except ImportError:
+    from diffusers.models.controlnets.multicontrolnet import MultiControlNetModel
 from diffusers.pipelines.stable_diffusion import StableDiffusionPipelineOutput
 from diffusers.utils import logging, replace_example_docstring
 from diffusers.utils.torch_utils import is_compiled_module

@@ -13,7 +13,7 @@ from diffusers import (AutoencoderKL, DiffusionPipeline,
 from diffusers.loaders import LoraLoaderMixin, TextualInversionLoaderMixin
 try:
     from diffusers.models.autoencoders.vae import DecoderOutput
-except:
+except ImportError:
     from diffusers.models.vae import DecoderOutput
 from diffusers.pipelines.stable_diffusion import StableDiffusionPipelineOutput
 from diffusers.utils import logging, replace_example_docstring

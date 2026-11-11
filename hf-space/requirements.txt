@@ -1,11 +1,9 @@
-diffusers==0.25.1
-transformers==4.44.2
+diffusers
+transformers
 accelerate
 torch
 torchvision
 spaces
-gradio==4.44.1
-huggingface_hub==0.25.2
-numpy<2
 py360convert
+numpy
 pillow
