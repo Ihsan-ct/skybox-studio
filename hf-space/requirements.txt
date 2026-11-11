@@ -7,3 +7,4 @@ spaces
 py360convert
 numpy
 pillow
+setuptools<81
