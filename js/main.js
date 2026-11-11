@@ -834,35 +834,55 @@
             const reader = r.body.getReader();
             const dec = new TextDecoder();
             let buf = '';
+
+            // Parser SSE dua format:
+            // - Gradio 6: "event: complete" + "data: [hasil…]" (hasil langsung array)
+            // - Gradio lama: "data: {msg: process_completed, output…}"
+            const handle = (name, raw) => {
+              let payload;
+              try { payload = JSON.parse(raw); } catch { return false; }
+              if (name === 'error') {
+                reject(new Error(typeof payload === 'string' ? payload : (payload && payload.message) || 'Error di Space'));
+                return true;
+              }
+              if (name === 'complete' || Array.isArray(payload)) {
+                resolve(Array.isArray(payload) ? payload : [payload]);
+                return true;
+              }
+              if (payload && payload.msg === 'process_completed') {
+                const errMsg = payload.output && payload.output.error;
+                if (errMsg) reject(new Error(errMsg));
+                else resolve(payload.output.data);
+                return true;
+              }
+              if (payload && (payload.msg === 'process_error' || payload.msg === 'unexpected_error')) {
+                const errMsg = (payload.output && payload.output.error) || payload.message || 'Error di Space';
+                reject(new Error(String(errMsg).slice(0, 180)));
+                return true;
+              }
+              return false;
+            };
+
             for (;;) {
               const { value, done } = await reader.read();
-              if (done) break;
+              if (done) {
+                // Gradio 6 mengirim hasil lengkap lalu menutup stream — bukan error.
+                reject(new Error('Stream berakhir tanpa hasil — coba sekali lagi (Space mungkin sedang cold-start).'));
+                return;
+              }
               buf += dec.decode(value, { stream: true });
               let idx;
               while ((idx = buf.indexOf('\n\n')) >= 0) {
-                const chunk = buf.slice(0, idx);
+                const block = buf.slice(0, idx);
                 buf = buf.slice(idx + 2);
-                for (const line of chunk.split('\n')) {
-                  if (!line.startsWith('data:')) continue;
-                  let d; try { d = JSON.parse(line.slice(5)); } catch { continue; }
-                  if (d.msg === 'process_completed') {
-                    const errMsg = d.output && d.output.error;
-                    if (errMsg) reject(new Error(errMsg));
-                    else resolve(d.output.data);
-                    return;
-                  }
-                  if (d.msg === 'process_error' || d.msg === 'unexpected_error') {
-                    const errMsg = (d.output && d.output.error) || d.message || 'Error di Space';
-                    reject(new Error(String(errMsg).slice(0, 180)));
-                    return;
-                  }
-                  if (d.msg === 'estimation' && d.rank && d.rank > 1) {
-                    setStatus('Antre di GPU Zero… posisi ' + d.rank);
-                  }
+                let name = '', raw = '';
+                for (const line of block.split('\n')) {
+                  if (line.startsWith('event:')) name = line.slice(6).trim();
+                  else if (line.startsWith('data:')) raw = line.slice(5).trim();
                 }
+                if (raw && handle(name, raw)) return;
               }
             }
-            reject(new Error('Stream ditutup sebelum selesai.'));
           }).catch(e => reject(e instanceof Error ? e : new Error(String(e))));
         });
 
