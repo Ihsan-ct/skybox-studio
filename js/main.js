@@ -765,7 +765,8 @@
       // Terima juga halaman Space lengkap: huggingface.co/spaces/owner/name → owner-name.hf.space
       const m = v.match(/^(?:www\.)?huggingface\.co\/spaces\/([^/]+)\/([^/?#]+)/);
       if (m) v = `${m[1]}-${m[2]}`;
-      return v;
+      if (!/\.hf\.space$/.test(v) && !/^huggingface\.co\//.test(v)) v += '.hf.space';
+      return 'https://' + v;
     };
     $('aiSpaceUrl').value = localStorage.getItem('nakaHfSpace') || '';
     $('aiSpaceUrl').addEventListener('change', () => {
