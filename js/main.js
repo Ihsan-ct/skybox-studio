@@ -890,7 +890,10 @@
           }).catch(e => reject(e instanceof Error ? e : new Error(String(e))));
         });
 
-        const outFile = out[1] || out[0];
+        // v1.12.6: out bisa berupa objek FileData tunggal (gradio 6) atau array (format lama)
+        const outFile = Array.isArray(out)
+          ? (out.filter(f => /\.png$/i.test(f?.path)).pop() || out[1] || out[0])
+          : out;
         const outPath = outFile && outFile.path;
         if (!outPath) throw new Error('Hasil Space tidak berisi file.');
         aiResultUrl = proxyMode
