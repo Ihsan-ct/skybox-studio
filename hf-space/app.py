@@ -72,6 +72,16 @@ def generate_skybox(input_image, prompt_style):
         guidance_scale=7.5
     ).images[0]
 
+    # Feather blend: gambar asli ditempel kembali di atas hasil AI dengan tepi
+    # lembut, agar transisi asli↔AI tidak tampak sebagai kotak keras.
+    from PIL import ImageFilter, ImageDraw
+    feather = 28
+    fmask = Image.new("L", (input_w, input_h), 0)
+    dr = ImageDraw.Draw(fmask)
+    dr.rectangle([feather // 2, feather // 2, input_w - feather // 2, input_h - feather // 2], fill=255)
+    fmask = fmask.filter(ImageFilter.GaussianBlur(feather / 2))
+    result.paste(resized_input, (paste_x, paste_y), fmask)
+
     return result
 
 ui = gr.Interface(
