@@ -781,24 +781,37 @@
 
     // Alur AI 360 TANPA modul eksternal — protokol API Gradio langsung:
     // upload → call → baca stream hasil. 100% fetch (token HF via header).
+    // Jika koneksi langsung browser→Space gagal (ISP memblokir *.hf.space),
+    // otomatis pindah ke proxy Vercel sendiri: /api/hf-proxy?p=…
+    let proxyMode = false;
     $('btnAiGenerate').addEventListener('click', async () => {
       const base = spaceUrl();
       if (!aiBlob) { setStatus('Pilih gambar dulu.'); return; }
       if (!base) { setStatus('Isi URL Hugging Face Space dulu (lihat panduan di bawah).'); return; }
       const token = $('aiToken').value.trim();
       const auth = token ? { Authorization: 'Bearer ' + token } : {};
+      const aiFetch = (path, opts = {}) => {
+        const direct = base + '/' + path.replace(/^\/+/, '');
+        const prox = '/api/hf-proxy?p=' + path.replace(/^\/+/, '');
+        return fetch(proxyMode ? prox : direct, opts).catch(err => {
+          if (proxyMode) throw err;
+          proxyMode = true;
+          setStatus('Koneksi langsung gagal — mencoba lewat proxy Vercel…');
+          return fetch(prox, opts);
+        });
+      };
       $('btnAiGenerate').disabled = true;
       try {
         setStatus('Mengunggah gambar ke Space…');
         const fdu = new FormData();
         fdu.append('files', aiBlob, 'input.png');
-        const up = await fetch(base + '/gradio_api/upload', { method: 'POST', body: fdu, headers: auth });
+        const up = await aiFetch('gradio_api/upload', { method: 'POST', body: fdu, headers: auth });
         if (!up.ok) throw new Error('Upload gagal (HTTP ' + up.status + ') — pastikan Space status Running.');
         const paths = await up.json();
         if (!paths || !paths[0]) throw new Error('Upload gagal: jawaban Space tidak berisi file.');
 
         setStatus('Mengantri di GPU Zero…');
-        const call = await fetch(base + '/gradio_api/call/generate_skybox', {
+        const call = await aiFetch('gradio_api/call/generate_skybox', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', ...auth },
           body: JSON.stringify({
@@ -815,7 +828,7 @@
 
         setStatus('Menggambar panorama 360°… (ZeroGPU ±10–60 detik)');
         const out = await new Promise((resolve, reject) => {
-          const stream = fetch(base + '/gradio_api/call/generate_skybox/' + eventId, { headers: auth });
+          const stream = aiFetch('gradio_api/call/generate_skybox/' + eventId, { headers: auth });
           stream.then(async r => {
             if (!r.ok || !r.body) { reject(new Error('Stream gagal (HTTP ' + r.status + ')')); return; }
             const reader = r.body.getReader();
@@ -856,7 +869,9 @@
         const outFile = out[1] || out[0];
         const outPath = outFile && outFile.path;
         if (!outPath) throw new Error('Hasil Space tidak berisi file.');
-        aiResultUrl = base + '/gradio_api/file=' + outPath;
+        aiResultUrl = proxyMode
+          ? '/api/hf-proxy?p=gradio_api/file=' + outPath
+          : base + '/gradio_api/file=' + outPath;
         $('aiResult').src = aiResultUrl;
         $('aiResult').style.display = 'block';
         $('btnAiUse').disabled = false;
