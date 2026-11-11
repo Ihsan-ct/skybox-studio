@@ -765,6 +765,10 @@
     $('aiSpaceUrl').addEventListener('change', () => {
       localStorage.setItem('nakaHfSpace', spaceUrl());
     });
+    $('aiToken').value = localStorage.getItem('nakaHfToken') || '';
+    $('aiToken').addEventListener('change', () => {
+      localStorage.setItem('nakaHfToken', $('aiToken').value.trim());
+    });
 
     const setStatus = t => { $('aiStatus').textContent = t; };
 
@@ -776,7 +780,8 @@
       try {
         setStatus('Menghubungkan ke Space…');
         const { Client } = await import('https://cdn.jsdelivr.net/npm/@gradio/client/+esm');
-        const app = await Client.connect(url);
+        const token = $('aiToken').value.trim();
+        const app = await Client.connect(url, token ? { hf_token: token } : {});
         setStatus('Menggambar panorama 360°… (ZeroGPU bisa antre ±10–60 detik)');
         const res = await app.predict('/generate_skybox', [aiBlob, $('aiStyle').value]);
         // data[1] = gr.File PNG full-res (data[0] hanya preview webp yang dikompres)
