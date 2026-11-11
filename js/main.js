@@ -760,7 +760,13 @@
       $('btnAiGenerate').disabled = false;
     });
 
-    const spaceUrl = () => $('aiSpaceUrl').value.trim().replace(/^https?:\/\//, '').replace(/\/$/, '');
+    const spaceUrl = () => {
+      let v = $('aiSpaceUrl').value.trim().replace(/^https?:\/\//, '').replace(/\/+$/, '');
+      // Terima juga halaman Space lengkap: huggingface.co/spaces/owner/name → owner-name.hf.space
+      const m = v.match(/^(?:www\.)?huggingface\.co\/spaces\/([^/]+)\/([^/?#]+)/);
+      if (m) v = `${m[1]}-${m[2]}`;
+      return v;
+    };
     $('aiSpaceUrl').value = localStorage.getItem('nakaHfSpace') || '';
     $('aiSpaceUrl').addEventListener('change', () => {
       localStorage.setItem('nakaHfSpace', spaceUrl());
@@ -778,8 +784,21 @@
       if (!url) { setStatus('Isi URL Hugging Face Space dulu (lihat panduan di bawah).'); return; }
       $('btnAiGenerate').disabled = true;
       try {
-        setStatus('Menghubungkan ke Space…');
-        const { Client } = await import('https://cdn.jsdelivr.net/npm/@gradio/client/+esm');
+        setStatus('Memuat modul AI…');
+        // Utama: file lokal (aman dari pemblokiran CDN); cadangan: CDN alternatif.
+        const sources = [
+          '/js/vendor/gradio-client.mjs',
+          'https://esm.sh/@gradio/client',
+          'https://cdn.jsdelivr.net/npm/@gradio/client/+esm'
+        ];
+        let Client = null;
+        for (const src of sources) {
+          try {
+            const m = await import(src);
+            if (m && m.Client) { Client = m.Client; break; }
+          } catch (e) { /* coba sumber berikutnya */ }
+        }
+        if (!Client) throw new Error('Semua sumber modul AI gagal dimuat (jaringan memblokir CDN). Coba koneksi lain.');
         const token = $('aiToken').value.trim();
         const app = await Client.connect(url, token ? { hf_token: token } : {});
         setStatus('Menggambar panorama 360°… (ZeroGPU bisa antre ±10–60 detik)');
