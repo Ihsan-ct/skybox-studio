@@ -779,42 +779,77 @@
 
     const setStatus = t => { $('aiStatus').textContent = t; };
 
+    // Alur AI 360 TANPA modul eksternal — protokol API Gradio langsung:
+    // upload → call → stream hasil (SSE). 100% fetch + EventSource.
     $('btnAiGenerate').addEventListener('click', async () => {
-      const url = spaceUrl();
+      const base = spaceUrl();
       if (!aiBlob) { setStatus('Pilih gambar dulu.'); return; }
-      if (!url) { setStatus('Isi URL Hugging Face Space dulu (lihat panduan di bawah).'); return; }
+      if (!base) { setStatus('Isi URL Hugging Face Space dulu (lihat panduan di bawah).'); return; }
       $('btnAiGenerate').disabled = true;
       try {
-        setStatus('Memuat modul AI…');
-        // Utama: file lokal (aman dari pemblokiran CDN); cadangan: CDN alternatif.
-        const sources = [
-          '/js/vendor/gradio-client.mjs',
-          'https://esm.sh/@gradio/client',
-          'https://cdn.jsdelivr.net/npm/@gradio/client/+esm'
-        ];
-        let Client = null;
-        for (const src of sources) {
-          try {
-            const m = await import(src);
-            if (m && m.Client) { Client = m.Client; break; }
-          } catch (e) { /* coba sumber berikutnya */ }
-        }
-        if (!Client) throw new Error('Semua sumber modul AI gagal dimuat (jaringan memblokir CDN). Coba koneksi lain.');
-        const token = $('aiToken').value.trim();
-        const app = await Client.connect(url, token ? { hf_token: token } : {});
-        setStatus('Menggambar panorama 360°… (ZeroGPU bisa antre ±10–60 detik)');
-        const res = await app.predict('/generate_skybox', [aiBlob, $('aiStyle').value]);
-        // data[1] = gr.File PNG full-res (data[0] hanya preview webp yang dikompres)
-        const fd = res.data && (res.data[1] || res.data[0]);
-        const outUrl = fd && (fd.url || (typeof fd === 'string' && fd));
-        if (!outUrl) throw new Error('Format jawaban Space tidak dikenal.');
-        aiResultUrl = outUrl;
-        $('aiResult').src = outUrl;
+        setStatus('Mengunggah gambar ke Space…');
+        const fdu = new FormData();
+        fdu.append('files', aiBlob, 'input.png');
+        const up = await fetch(base + '/gradio_api/upload', { method: 'POST', body: fdu });
+        if (!up.ok) throw new Error('Upload gagal (HTTP ' + up.status + ') — pastikan Space status Running.');
+        const paths = await up.json();
+        if (!paths || !paths[0]) throw new Error('Upload gagal: jawaban Space tidak berisi file.');
+
+        setStatus('Mengantri di GPU Zero…');
+        const call = await fetch(base + '/gradio_api/call/generate_skybox', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            data: [
+              { path: paths[0], meta: { _type: 'gradio.FileData' } },
+              $('aiStyle').value
+            ]
+          })
+        });
+        if (!call.ok) throw new Error('Panggilan gagal (HTTP ' + call.status + ')');
+        const callJson = await call.json();
+        const eventId = callJson.event_id;
+        if (!eventId) throw new Error('Panggilan gagal: Space tidak mengirim event_id.');
+
+        setStatus('Menggambar panorama 360°… (ZeroGPU ±10–60 detik)');
+        const out = await new Promise((resolve, reject) => {
+          const es = new EventSource(base + '/gradio_api/call/generate_skybox/' + eventId);
+          es.onmessage = ev => {
+            let d; try { d = JSON.parse(ev.data); } catch { return; }
+            if (d.msg === 'process_completed') {
+              es.close();
+              const errMsg = d.output && d.output.error;
+              if (errMsg) reject(new Error(errMsg));
+              else resolve(d.output.data);
+            } else if (d.msg === 'process_error' || d.msg === 'unexpected_error') {
+              es.close();
+              const errMsg = (d.output && d.output.error) || d.message || 'Error di Space';
+              reject(new Error(String(errMsg).slice(0, 180)));
+            } else if (d.msg === 'estimation' && d.rank && d.rank > 1) {
+              setStatus('Antre di GPU Zero… posisi ' + d.rank + ' (±' + Math.round((d.rank_eta || 0)) + ' detik)');
+            }
+          };
+          es.onerror = () => {
+            es.close();
+            reject(new Error('Koneksi ke Space terputus — jaringan mungkin memblokir *.hf.space (coba hotspot/VPN).'));
+          };
+        });
+
+        const outFile = out[1] || out[0];
+        const outPath = outFile && outFile.path;
+        if (!outPath) throw new Error('Hasil Space tidak berisi file.');
+        aiResultUrl = base + '/gradio_api/file=' + outPath;
+        $('aiResult').src = aiResultUrl;
         $('aiResult').style.display = 'block';
         $('btnAiUse').disabled = false;
         setStatus('Selesai! Klik "Gunakan Hasil di Konversi" untuk lanjut ke ekspor 6 sisi.');
       } catch (e) {
-        setStatus('Gagal: ' + (e && e.message ? e.message : e) + ' — cek URL Space & status Running di Hugging Face.');
+        const m = (e && e.message) || String(e);
+        if (/exceeded your ZeroGPU|ZeroGPU runs limit/i.test(m)) {
+          setStatus('Kuota ZeroGPU anonim habis — isi Token Hugging Face di atas (gratis, dari akun Anda), lalu coba lagi.');
+        } else {
+          setStatus('Gagal: ' + m);
+        }
       }
       $('btnAiGenerate').disabled = false;
     });
