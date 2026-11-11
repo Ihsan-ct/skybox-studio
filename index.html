@@ -11,12 +11,6 @@
   <meta property="og:title" content="NAKA Studio">
   <meta property="og:description" content="Ubah panorama 360° menjadi 6 sisi skybox Roblox dan upload langsung ke Roblox.">
   <meta property="og:type" content="website">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600;700&display=swap">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
   <link rel="stylesheet" href="css/app.css?v=170">
   <style>
@@ -115,12 +109,12 @@
     <div id="accList"></div>
     <p class="note">Disimpan hanya di browser ini, tidak dikirim ke server. API key dienkripsi (AES-GCM) dengan kunci perangkat sehingga terisi otomatis saat upload; isi kata sandi kalau mau perlindungan ekstra (kata sandi diminta tiap dipakai). API Key dibuat di <a href="https://create.roblox.com/dashboard/credentials" target="_blank" rel="noopener">Creator Dashboard</a> dengan permission <strong>Assets</strong> (Read + Write), tanpa pembatasan IP.</p>
     <div class="form">
-      <input id="fName" type="text" placeholder="Nama akun (mis. Akun Utama)">
-      <select id="fType"><option value="user">Milik User</option><option value="group">Milik Group</option></select>
-      <input id="fId" type="text" inputmode="numeric" placeholder="User ID / Group ID">
-      <input id="fPrefix" type="text" placeholder="Nama awalan aset (default: Skybox)">
-      <input id="fKey" type="password" placeholder="Open Cloud API Key" autocomplete="off">
-      <input id="fPass" type="password" placeholder="Kata sandi (opsional)" autocomplete="off">
+      <input id="fName" name="fName" type="text" aria-label="Nama akun" placeholder="Nama akun (mis. Akun Utama)">
+      <select id="fType" name="fType" aria-label="Tipe pemilik"><option value="user">Milik User</option><option value="group">Milik Group</option></select>
+      <input id="fId" name="fId" type="text" aria-label="User ID / Group ID" inputmode="numeric" placeholder="User ID / Group ID">
+      <input id="fPrefix" name="fPrefix" type="text" aria-label="Awalan nama aset" placeholder="Nama awalan aset (default: Skybox)">
+      <input id="fKey" name="fKey" type="password" aria-label="Open Cloud API Key" placeholder="Open Cloud API Key" autocomplete="off">
+      <input id="fPass" name="fPass" type="password" aria-label="Kata sandi" placeholder="Kata sandi (opsional)" autocomplete="off">
     </div>
     <div class="row"><button id="fSave" class="primary" type="button">Simpan akun</button></div>
     <div id="fMsg" class="note" role="status"></div>

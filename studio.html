@@ -12,14 +12,7 @@
   <meta property="og:image" content="assets/logo-header.png">
   <meta property="og:type" content="website">
   <meta name="twitter:card" content="summary">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600;700&display=swap">
   <script src="js/i18n.js?v=170"></script>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-
   <link rel="stylesheet" href="css/app.css?v=170">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" integrity="sha512-dLxUelApnYxpLt6K2iomGngnHO83iUvZytA3YjDUCjT0HDOHKXnVYdf3hU4JjM8uEhxf9nD1/ey98U3t2vZ0qQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" integrity="sha512-XMVd28F1oH/O71fzwBnV7HucLxVwtxf26XV8P4wPk26EDxuGZ91N8bsOttmnomcCD3CS5ZMRL50H0GgOHvegtg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
@@ -53,7 +46,7 @@
       <strong>Jatuhkan gambar di sini</strong>
       <span>atau klik untuk memilih, atau tempel (Ctrl+V). JPG, PNG, WebP. Gambar 2D biasa atau panorama 360°; langsung dikonversi.</span>
     </div>
-    <input id="file" type="file" accept="image/png,image/jpeg,image/webp" hidden>
+    <input id="file" name="file" type="file" accept="image/png,image/jpeg,image/webp" hidden>
     <p id="fileinfo">Belum ada gambar.</p>
     <div class="row"><button id="btnTest" type="button">Gambar Uji</button></div>
     <div id="banners" aria-live="polite"></div>
@@ -90,13 +83,13 @@
       </div>
       <div class="stage" id="stage3d"></div>
       <div class="konv-controls">
-        <label class="check"><input type="checkbox" id="chkCharacter" checked> ><span data-i18n="chkChar">arakter Roblox</label>
-        <label class="check"><input type="checkbox" id="chkBaseplate" checked> ><span data-i18n="chkBaseplate">aseplate</label>
-        <label class="check"><input type="checkbox" id="chkStudio" checked> ><span data-i18n="chkStudioMode">ode Studio</label>
-        <label class="check"><input type="checkbox" id="chkWireframe"> ><span data-i18n="chkWireframe">ireframe Seam</label>
+        <label class="check"><input type="checkbox" id="chkCharacter" name="chkCharacter" checked> <span data-i18n="chkChar">Karakter Roblox</span></label>
+        <label class="check"><input type="checkbox" id="chkBaseplate" name="chkBaseplate" checked> <span data-i18n="chkBaseplate">Baseplate</span></label>
+        <label class="check"><input type="checkbox" id="chkStudio" name="chkStudio" checked> <span data-i18n="chkStudioMode">Mode Studio</span></label>
+        <label class="check"><input type="checkbox" id="chkWireframe" name="chkWireframe"> <span data-i18n="chkWireframe">Wireframe Seam</span></label>
         <div class="slider">
-          <label>FOV: <output id="out_fov">75</output></label>
-          <input type="range" id="s_fov" min="40" max="100" value="75">
+          <label for="s_fov">FOV: <output id="out_fov" for="s_fov">75</output></label>
+          <input type="range" id="s_fov" name="s_fov" min="40" max="100" value="75">
         </div>
       </div>
       <details class="group" style="margin-top:10px">
@@ -125,11 +118,11 @@
         </div>
         <details class="group" style="margin-top:8px">
           <summary>Opsi script (matahari, kabut, pencahayaan)</summary>
-          <label class="check"><input type="checkbox" id="celestial"> Tampilkan matahari/bulan (CelestialBodiesShown)</label>
-          <label class="check"><input type="checkbox" id="withAtm"> Sertakan Atmosphere (kabut udara — ubah suasana langit)</label>
-          <label class="check"><input type="checkbox" id="withLight" checked> Profil pencahayaan (atur Lighting: jam, ambient, bloom, fog — mengikuti mood langit)</label>
+          <label class="check"><input type="checkbox" id="celestial" name="celestial"> Tampilkan matahari/bulan (CelestialBodiesShown)</label>
+          <label class="check"><input type="checkbox" id="withAtm" name="withAtm"> Sertakan Atmosphere (kabut udara — ubah suasana langit)</label>
+          <label class="check"><input type="checkbox" id="withLight" name="withLight" checked> Profil pencahayaan (atur Lighting: jam, ambient, bloom, fog — mengikuti mood langit)</label>
           <div class="row" id="lightRow" hidden>
-            <select id="lightProfile" aria-label="Profil pencahayaan" style="min-height:40px;border-radius:8px;border:1px solid var(--line);background:var(--panel2);color:var(--text);font:inherit;flex:0 1 260px">
+            <select id="lightProfile" name="lightProfile" aria-label="Profil pencahayaan" style="min-height:40px;border-radius:8px;border:1px solid var(--line);background:var(--panel2);color:var(--text);font:inherit;flex:0 1 260px">
               <option value="auto" selected>Otomatis — analisis kecerahan gambar</option>
               <option value="siang">Siang (terang, hangat)</option>
               <option value="senja">Senja (golden hour)</option>
@@ -138,7 +131,7 @@
             </select>
           </div>
           <div class="row" id="atmPresetRow" hidden>
-            <select id="atmPreset" aria-label="Preset Atmosphere" style="min-height:40px;border-radius:8px;border:1px solid var(--line);background:var(--panel2);color:var(--text);font:inherit;flex:0 1 240px">
+            <select id="atmPreset" name="atmPreset" aria-label="Preset Atmosphere" style="min-height:40px;border-radius:8px;border:1px solid var(--line);background:var(--panel2);color:var(--text);font:inherit;flex:0 1 240px">
               <option value="tipis">Atmosphere: Tipis (semu)</option>
               <option value="normal" selected>Atmosphere: Normal (film look)</option>
               <option value="tebal">Atmosphere: Tebal (horor / dramatis)</option>
@@ -210,7 +203,7 @@
         <div class="seglabel">Isi gambar</div>
         <div class="seg" id="segKind" role="group"></div>
         <div class="seglabel">Pola isi sisi lain</div>
-        <select id="flatFill" aria-label="Pola isi sisi lain" style="width:100%;min-height:40px;border-radius:8px;border:1px solid var(--line);background:var(--panel2);color:var(--text);font:inherit">
+        <select id="flatFill" name="flatFill" aria-label="Pola isi sisi lain" style="width:100%;min-height:40px;border-radius:8px;border:1px solid var(--line);background:var(--panel2);color:var(--text);font:inherit">
           <option value="alaconv" selected>Ala converter local — lateral panorama, atas langit, bawah warna laut flat (rekomendasi)</option>
           <option value="penuh">Penuh 360° — gambar direntangkan menutup seluruh langit</option>
           <option value="penuhcermin">Penuh cermin ala TC — [gambar asli | cermin] nutup 360°</option>
@@ -225,12 +218,12 @@
         <div class="slider">
           <label for="s_polesmooth">Rapikan atas &amp; bawah (kutub)</label>
           <output id="out_polesmooth">30%</output>
-          <input type="range" id="s_polesmooth" min="0" max="100" value="30">
+          <input type="range" id="s_polesmooth" name="s_polesmooth" min="0" max="100" value="30">
         </div>
         <div class="slider">
           <label for="s_voff">Tinggi Horizon</label>
           <output id="out_voff">0°</output>
-          <input type="range" id="s_voff" min="-45" max="45" value="0">
+          <input type="range" id="s_voff" name="s_voff" min="-45" max="45" value="0">
         </div>
         <p class="note" style="margin-top:2px">Rapikan kutub: menghaluskan pusaran di titik atas/bawah (sering terjadi pada gambar AI). Tinggi Horizon: geser gambar naik/turun agar lautan awan pas di garis horizon.</p>
       </div>
@@ -247,7 +240,7 @@
 
       <div class="seglabel" style="margin-top:14px">Watermark Sisi &amp; Posisi</div>
       <div class="row" style="margin-top:4px;">
-        <input type="file" id="wmFile" accept="image/*" hidden>
+        <input type="file" id="wmFile" name="wmFile" accept="image/*" hidden>
         <button type="button" class="btn" id="btnWmPick">Pilih Logo</button>
         <button type="button" class="btn" id="btnWmClear">Hapus Logo</button>
       </div>
@@ -260,8 +253,8 @@
       <div class="seg" id="segUp" role="group"></div>
       <div class="seglabel">Rotasi sisi Down</div>
       <div class="seg" id="segDn" role="group"></div>
-      <label class="check"><input type="checkbox" id="flipH"> Flip horizontal (mirror)</label>
-      <label class="check"><input type="checkbox" id="mirrorDn"> Sisi bawah cermin langit (map melayang)</label>
+      <label class="check"><input type="checkbox" id="flipH" name="flipH"> Flip horizontal (mirror)</label>
+      <label class="check"><input type="checkbox" id="mirrorDn" name="mirrorDn"> Sisi bawah cermin langit (map melayang)</label>
       <button class="reset" type="button" data-reset="orient">Reset orientasi</button>
 
       <div class="seglabel" style="margin-top:14px">Konfigurasi (bagikan / simpan)</div>
@@ -269,7 +262,7 @@
         <button type="button" id="btnCfgExport" style="min-height:38px;font-size:13px">Ekspor pengaturan (.json)</button>
         <button type="button" id="btnCfgImport" style="min-height:38px;font-size:13px">Impor pengaturan</button>
         <button type="button" id="btnCfgLink" style="min-height:38px;font-size:13px">Salin Link Konfigurasi</button>
-        <input type="file" id="cfgFile" accept="application/json,.json" hidden>
+        <input type="file" id="cfgFile" name="cfgFile" accept="application/json,.json" hidden>
       </div>
     </details>
   </section>

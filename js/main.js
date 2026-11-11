@@ -415,7 +415,7 @@
     const wrap = document.createElement('div'); wrap.className = 'slider';
     const lab = document.createElement('label'); lab.htmlFor = 'fs_' + key; lab.textContent = label;
     const out = document.createElement('output'); out.htmlFor = 'fs_' + key;
-    const inp = document.createElement('input'); inp.type = 'range'; inp.id = 'fs_' + key;
+    const inp = document.createElement('input'); inp.type = 'range'; inp.id = 'fs_' + key; inp.name = inp.id;
     inp.min = min; inp.max = max; inp.step = step; inp.value = flat[key];
     const show = () => { out.textContent = flat[key] + unit; };
     inp.addEventListener('input', () => { flat[key] = Number(inp.value); show(); scheduleFlat(); });
@@ -466,7 +466,7 @@
     const wrap = document.createElement('div'); wrap.className = 'slider';
     const lab = document.createElement('label'); lab.htmlFor = 's_' + key; lab.textContent = label;
     const out = document.createElement('output'); out.htmlFor = 's_' + key;
-    const inp = document.createElement('input'); inp.type = 'range'; inp.id = 's_' + key;
+    const inp = document.createElement('input'); inp.type = 'range'; inp.id = 's_' + key; inp.name = inp.id;
     inp.min = min; inp.max = max; inp.step = step; inp.value = state[key];
     const show = () => { out.textContent = state[key] + unit; };
     inp.addEventListener('input', () => {
@@ -490,7 +490,7 @@
 
   const fadeColorWrap = document.createElement('div'); fadeColorWrap.className = 'color-picker';
   const fadeColorLab = document.createElement('label'); fadeColorLab.textContent = 'Warna Fade'; fadeColorLab.htmlFor = 'fadeColor';
-  const fadeColorInp = document.createElement('input'); fadeColorInp.type = 'color'; fadeColorInp.id = 'fadeColor'; fadeColorInp.value = state.fadeColor;
+  const fadeColorInp = document.createElement('input'); fadeColorInp.type = 'color'; fadeColorInp.id = 'fadeColor'; fadeColorInp.name = 'fadeColor'; fadeColorInp.value = state.fadeColor;
   fadeColorInp.addEventListener('input', () => {
     state.fadeColor = fadeColorInp.value;
     savePrefs();
@@ -502,7 +502,7 @@
   addSlider($('grpPos'), 'fadeTop', 'Fade Atas (kutub)', 0, 60, 1, '°');
   const fadeTopWrap = document.createElement('div'); fadeTopWrap.className = 'color-picker';
   const fadeTopLab = document.createElement('label'); fadeTopLab.textContent = 'Warna Fade Atas'; fadeTopLab.htmlFor = 'fadeTopColor';
-  const fadeTopInp = document.createElement('input'); fadeTopInp.type = 'color'; fadeTopInp.id = 'fadeTopColor'; fadeTopInp.value = state.fadeTopColor;
+  const fadeTopInp = document.createElement('input'); fadeTopInp.type = 'color'; fadeTopInp.id = 'fadeTopColor'; fadeTopInp.name = 'fadeTopColor'; fadeTopInp.value = state.fadeTopColor;
   fadeTopInp.addEventListener('input', () => { state.fadeTopColor = fadeTopInp.value; requestRender(); });
   fadeTopWrap.appendChild(fadeTopLab); fadeTopWrap.appendChild(fadeTopInp);
   $('grpPos').appendChild(fadeTopWrap);
@@ -615,7 +615,7 @@
     anchorLab.htmlFor = 'wmAnchor';
     anchorLab.textContent = 'Posisi logo';
     const anchorSel = document.createElement('select');
-    anchorSel.id = 'wmAnchor';
+    anchorSel.id = 'wmAnchor'; anchorSel.name = 'wmAnchor';
     anchorSel.style.cssText = 'min-height:36px;border-radius:8px;border:1px solid var(--line);background:var(--panel2);color:var(--text)';
     [['tengah', 'Tengah'], ['kiri-atas', 'Kiri atas'], ['kanan-atas', 'Kanan atas'], ['kiri-bawah', 'Kiri bawah'], ['kanan-bawah', 'Kanan bawah']]
       .forEach(([v, t]) => { const o = document.createElement('option'); o.value = v; o.textContent = t; anchorSel.appendChild(o); });
@@ -830,7 +830,7 @@
     const row = document.createElement('div'); row.className = 'field';
     // Kolom ID memakai nama properti Roblox (SkyboxLf dst.) supaya cocok dengan Asset Manager.
     const lab = document.createElement('label'); lab.htmlFor = 'id_' + f.k; lab.textContent = 'Skybox' + f.k;
-    const inp = document.createElement('input'); inp.type = 'text'; inp.id = 'id_' + f.k;
+    const inp = document.createElement('input'); inp.type = 'text'; inp.id = 'id_' + f.k; inp.name = inp.id;
     inp.inputMode = 'numeric'; inp.placeholder = 'Image ID Skybox' + f.k;
     inp.addEventListener('input', () => { state.ids[f.k] = inp.value; state.uploadType = null; refreshLuau(); });
     row.appendChild(lab); row.appendChild(inp); $('idfields').appendChild(row);
@@ -1081,6 +1081,7 @@
         lab.style.margin = '4px 0';
         const cb = document.createElement('input');
         cb.type = 'checkbox';
+        cb.name = 'vaultEntry_' + i;
         cb.checked = i === 0;
         cb.dataset.name = e.name;
         cb.dataset.ids = JSON.stringify(e.ids);

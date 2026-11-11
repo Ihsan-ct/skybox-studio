@@ -76,9 +76,10 @@ window.DeSwirl = (function () {
     const vals = { scale: 100, rot: 0, cover: 55 };
     function addS(key, label, min, max, val, unit) {
       const w = document.createElement('div'); w.className = 'slider';
-      const l = document.createElement('label'); l.textContent = label;
-      const o = document.createElement('output'); o.textContent = val + unit;
-      const i = document.createElement('input'); i.type = 'range'; i.min = min; i.max = max; i.step = 1; i.value = val;
+      const uid = 'dw_' + key;
+      const l = document.createElement('label'); l.htmlFor = uid; l.textContent = label;
+      const o = document.createElement('output'); o.htmlFor = uid; o.textContent = val + unit;
+      const i = document.createElement('input'); i.type = 'range'; i.id = uid; i.name = uid; i.min = min; i.max = max; i.step = 1; i.value = val;
       i.addEventListener('input', () => { o.textContent = Number(i.value) + unit; vals[key] = Number(i.value); schedule(); });
       w.appendChild(l); w.appendChild(o); w.appendChild(i);
       ctl.appendChild(w);
