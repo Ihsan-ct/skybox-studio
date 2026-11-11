@@ -541,3 +541,91 @@ details.group > summary:hover { color: var(--accent-2); }
 
 /* Footer menyatu dengan langit */
 .site-footer { border-top: 1px solid var(--line-glow); background: transparent; }
+
+/* ═══════════════════════════════════════════════════════════════
+   TASTE LAYER (v1.9.1) — mengikuti design-taste-frontend 2.5
+   Tiga lapis gerak: entrance on load, satu efek (sky canvas),
+   dan hover/press di setiap tombol, tab dan kartu.
+   Hanya transform & opacity; easing tanpa bounce.
+   ═══════════════════════════════════════════════════════════════ */
+:root {
+  --m-in: 150ms; --m-out: 120ms; --m-press: 90ms;
+  --ease: cubic-bezier(.2, .8, .2, 1);
+  --enter: cubic-bezier(.22, 1, .36, 1);
+}
+
+/* ── 1. HERO ENTRANCE — sekali saat load, lalu halaman berdiri ── */
+@keyframes nakaEnter {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: none; }
+}
+body > header { animation: nakaEnter .8s var(--enter) .02s both; }
+#sec-upload  { animation: nakaEnter .7s var(--enter) .10s both; }
+#sec-preview { animation: nakaEnter .7s var(--enter) .18s both; }
+#sec-controls{ animation: nakaEnter .7s var(--enter) .26s both; }
+#empty strong {
+  animation: nakaEnter .7s var(--enter) .32s both;
+}
+
+/* ── 2. HOVER & PRESS — setiap tombol, tab dan kartu menjawab ── */
+button, .btn {
+  transition: transform var(--m-in) var(--ease), border-color var(--m-in) var(--ease),
+              background-color var(--m-in) var(--ease), box-shadow var(--m-in) var(--ease),
+              color var(--m-in) var(--ease), filter var(--m-in) var(--ease);
+}
+button:hover:not(:disabled), .btn:hover { transform: translateY(-1px); }
+button:active:not(:disabled), .btn:active { transform: translateY(1px) scale(.985); transition-duration: var(--m-press); }
+button.primary:hover:not(:disabled) { transform: translateY(-2px); }
+button.primary:active:not(:disabled) { transform: translateY(0) scale(.985); }
+
+.card {
+  transition: transform var(--m-in) var(--ease), box-shadow var(--m-in) var(--ease);
+}
+.card:hover { transform: translateY(-2px); box-shadow: 0 22px 52px rgba(2, 8, 24, .55), 0 1px 0 rgba(255,255,255,.05) inset; }
+
+.tabs [role="tab"] { transition: transform var(--m-in) var(--ease), background-color var(--m-in) var(--ease), color var(--m-in) var(--ease), box-shadow var(--m-in) var(--ease); }
+.tabs [role="tab"]:hover { transform: translateY(-1px); }
+.tabs [role="tab"]:active { transform: translateY(0) scale(.98); transition-duration: var(--m-press); }
+
+/* Foto contoh langit: zoom halus di dalam bingkainya */
+button.smp { overflow: hidden; }
+button.smp img { transition: transform 600ms var(--ease); }
+button.smp:hover img { transform: scale(1.03); }
+
+/* ── 3. MOMEN TYPE-LED — empty state dibaca sebagai pengantar ── */
+#empty strong {
+  display: block;
+  font-size: clamp(26px, 2.6vw, 40px);
+  font-weight: 800; letter-spacing: -.03em; line-height: 1.15;
+  background: linear-gradient(100deg, #eaf4ff 20%, #7cc7ff 55%, #35dcff 90%);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+#empty ol { list-style: none; counter-reset: langkah; margin: 18px 0; padding: 0; }
+#empty ol li {
+  counter-increment: langkah;
+  position: relative; padding-left: 44px; margin: 12px 0;
+  font-size: 16px; line-height: 1.55; color: var(--text);
+}
+#empty ol li::before {
+  content: counter(langkah);
+  position: absolute; left: 0; top: -2px;
+  width: 30px; height: 30px; border-radius: 9px;
+  display: grid; place-items: center;
+  font: 800 15px/1 "Plus Jakarta Sans", "Inter", sans-serif;
+  color: var(--accent-ink);
+  background: var(--grad);
+  box-shadow: 0 0 14px rgba(53, 220, 255, .35);
+}
+#empty ol li + li::after { content: ""; }
+
+/* ── THE ONE EFFECT: sky canvas menggantikan bintang CSS statis ── */
+body::after { display: none; }  /* bintang CSS dimatikan, diganti canvas ber-parallax */
+#skyfx {
+  position: fixed; inset: 0; z-index: -1; pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body > header, #sec-upload, #sec-preview, #sec-controls, #empty strong { animation: none; }
+  .card:hover, button:hover:not(:disabled), .btn:hover, .tabs [role="tab"]:hover { transform: none; }
+  button.smp:hover img { transform: none; }
+}
