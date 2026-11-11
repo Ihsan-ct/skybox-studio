@@ -778,8 +778,9 @@
         const { Client } = await import('https://cdn.jsdelivr.net/npm/@gradio/client/+esm');
         const app = await Client.connect(url);
         setStatus('Menggambar panorama 360°… (ZeroGPU bisa antre ±10–60 detik)');
-        const res = await app.predict('/predict', [aiBlob, $('aiStyle').value]);
-        const fd = res.data && res.data[0];
+        const res = await app.predict('/generate_skybox', [aiBlob, $('aiStyle').value]);
+        // data[1] = gr.File PNG full-res (data[0] hanya preview webp yang dikompres)
+        const fd = res.data && (res.data[1] || res.data[0]);
         const outUrl = fd && (fd.url || (typeof fd === 'string' && fd));
         if (!outUrl) throw new Error('Format jawaban Space tidak dikenal.');
         aiResultUrl = outUrl;

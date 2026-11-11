@@ -1,9 +1,10 @@
 import spaces          # WAJIB paling atas sebelum torch/diffusers (aturan ZeroGPU)
 import gradio as gr
 import torch
-from PIL import Image, ImageOps
+from PIL import Image, ImageOps, ImageFilter, ImageDraw
 import numpy as np
 from diffusers import StableDiffusionInpaintPipeline
+import tempfile, os
 
 # Catatan: runwayml & stabilityai versi inpainting sudah dihapus dari HF Hub.
 # botp/stable-diffusion-v1-5-inpainting = mirror resmi SD1.5-inpainting yang masih hidup & tidak gated.
@@ -37,7 +38,7 @@ STYLES = {
 @spaces.GPU
 def generate_skybox(input_image, prompt_style):
     if input_image is None:
-        return None
+        return None, None
 
     target_w, target_h = 1024, 512
 
@@ -74,7 +75,6 @@ def generate_skybox(input_image, prompt_style):
 
     # Feather blend: gambar asli ditempel kembali di atas hasil AI dengan tepi
     # lembut, agar transisi asli↔AI tidak tampak sebagai kotak keras.
-    from PIL import ImageFilter, ImageDraw
     feather = 28
     fmask = Image.new("L", (input_w, input_h), 0)
     dr = ImageDraw.Draw(fmask)
@@ -82,7 +82,11 @@ def generate_skybox(input_image, prompt_style):
     fmask = fmask.filter(ImageFilter.GaussianBlur(feather / 2))
     result.paste(resized_input, (paste_x, paste_y), fmask)
 
-    return result
+    # Simpan PNG full-res — gradio 6 mengecilkan preview webp, file ini yang
+    # dipakai NAKA Studio agar resolusi 1024×512 tidak hilang.
+    tmp = tempfile.NamedTemporaryFile(suffix=".png", delete=False)
+    result.save(tmp.name)
+    return result, tmp.name
 
 ui = gr.Interface(
     fn=generate_skybox,
@@ -94,7 +98,10 @@ ui = gr.Interface(
             label="Environment Style"
         )
     ],
-    outputs=gr.Image(type="pil", label="360 Equirectangular Skybox (2:1)"),
+    outputs=[
+        gr.Image(type="pil", label="Preview hasil"),
+        gr.File(label="PNG equirect 1024×512 — dipakai NAKA Studio")
+    ],
     title="2D to 360° Skybox Outpainting (NAKA Studio backend)",
     description="Masukkan gambar 2D biasa — AI mengisi sisa 270° lingkaran + kutub dengan circular horizontal tiling agar tepi kiri–kanan seamless. Hasil rasio 2:1 siap dipakai sebagai skybox."
 )
