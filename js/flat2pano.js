@@ -698,9 +698,12 @@ window.Flat2Pano = (function () {
     const topC = avgStrip(0, Math.max(1, Math.round(H * 0.08)));
     const botC = avgStrip(H - Math.max(1, Math.round(H * 0.12)), H);
 
-    // ZONA ATAS (v 0..0.12): kutub penuh warna atas, melunak ke konten.
-    for (let y = 0; y < Math.round(H * 0.12); y++) {
-      const t = smoothstep(0, 1, 1 - (y + 0.5) / (H * 0.12) * 3);   // 1 di kutub → 0
+    // ZONA ATAS (v 0..0.26 = lat +90..+43): kutub dan sekelilingnya gradasi
+    // langit. FOV zenith menjangkau lat +52 — zona harus lebih lebar dari itu,
+    // kalau tidak konten tepi-atas gambar (pohon, bangunan) bocor ke zenith.
+    const topEnd = Math.round(H * 0.26);
+    for (let y = 0; y < topEnd; y++) {
+      const t = Math.pow(1 - (y + 0.5) / topEnd, 1.6);   // 1 di kutub → 0 di tepi zona
       if (t <= 0) continue;
       for (let x = 0; x < W; x++) {
         const i4 = (y * W + x) * 4;
