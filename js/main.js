@@ -835,39 +835,43 @@
             const dec = new TextDecoder();
             let buf = '';
 
-            // Parser SSE dua format:
-            // - Gradio 6: "event: complete" + "data: [hasil…]" (hasil langsung array)
-            // - Gradio lama: "data: {msg: process_completed, output…}"
+            // Gradio 6 mengirim SATU event complete per output component
+            // (preview webp + file PNG) — kumpulkan semuanya, lalu pilih PNG.
+            const collected = [];
             const handle = (name, raw) => {
               let payload;
-              try { payload = JSON.parse(raw); } catch { return false; }
+              try { payload = JSON.parse(raw); } catch { return; }
+              const add = f => { if (f && f.path) collected.push(f); };
               if (name === 'error') {
                 reject(new Error(typeof payload === 'string' ? payload : (payload && payload.message) || 'Error di Space'));
                 return true;
               }
-              if (name === 'complete' || Array.isArray(payload)) {
-                resolve(Array.isArray(payload) ? payload : [payload]);
-                return true;
-              }
+              if (Array.isArray(payload)) { payload.forEach(add); return false; }
               if (payload && payload.msg === 'process_completed') {
                 const errMsg = payload.output && payload.output.error;
-                if (errMsg) reject(new Error(errMsg));
-                else resolve(payload.output.data);
-                return true;
+                if (errMsg) { reject(new Error(errMsg)); return true; }
+                const arr = payload.output.data || [];
+                arr.forEach(x => add(x && (x.path ? x : { path: x })));
+                return false;
               }
               if (payload && (payload.msg === 'process_error' || payload.msg === 'unexpected_error')) {
                 const errMsg = (payload.output && payload.output.error) || payload.message || 'Error di Space';
                 reject(new Error(String(errMsg).slice(0, 180)));
                 return true;
               }
+              if (payload && payload.path) { add(payload); return false; }
               return false;
             };
 
             for (;;) {
               const { value, done } = await reader.read();
               if (done) {
-                // Gradio 6 mengirim hasil lengkap lalu menutup stream — bukan error.
-                reject(new Error('Stream berakhir tanpa hasil — coba sekali lagi (Space mungkin sedang cold-start).'));
+                // Stream berakhir = semua output terkirim. Pilih PNG full-res.
+                const png = collected.filter(f => /\.png$/i.test(f.path)).pop()
+                  || collected.filter(f => !/\.webp$/i.test(f.path)).pop()
+                  || collected[collected.length - 1];
+                if (png) resolve(png);
+                else reject(new Error('Stream berakhir tanpa hasil — coba sekali lagi.'));
                 return;
               }
               buf += dec.decode(value, { stream: true });
@@ -880,7 +884,7 @@
                   if (line.startsWith('event:')) name = line.slice(6).trim();
                   else if (line.startsWith('data:')) raw = line.slice(5).trim();
                 }
-                if (raw && handle(name, raw)) return;
+                if (raw) handle(name, raw);
               }
             }
           }).catch(e => reject(e instanceof Error ? e : new Error(String(e))));
