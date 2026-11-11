@@ -780,17 +780,19 @@
     const setStatus = t => { $('aiStatus').textContent = t; };
 
     // Alur AI 360 TANPA modul eksternal — protokol API Gradio langsung:
-    // upload → call → stream hasil (SSE). 100% fetch + EventSource.
+    // upload → call → baca stream hasil. 100% fetch (token HF via header).
     $('btnAiGenerate').addEventListener('click', async () => {
       const base = spaceUrl();
       if (!aiBlob) { setStatus('Pilih gambar dulu.'); return; }
       if (!base) { setStatus('Isi URL Hugging Face Space dulu (lihat panduan di bawah).'); return; }
+      const token = $('aiToken').value.trim();
+      const auth = token ? { Authorization: 'Bearer ' + token } : {};
       $('btnAiGenerate').disabled = true;
       try {
         setStatus('Mengunggah gambar ke Space…');
         const fdu = new FormData();
         fdu.append('files', aiBlob, 'input.png');
-        const up = await fetch(base + '/gradio_api/upload', { method: 'POST', body: fdu });
+        const up = await fetch(base + '/gradio_api/upload', { method: 'POST', body: fdu, headers: auth });
         if (!up.ok) throw new Error('Upload gagal (HTTP ' + up.status + ') — pastikan Space status Running.');
         const paths = await up.json();
         if (!paths || !paths[0]) throw new Error('Upload gagal: jawaban Space tidak berisi file.');
@@ -798,7 +800,7 @@
         setStatus('Mengantri di GPU Zero…');
         const call = await fetch(base + '/gradio_api/call/generate_skybox', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', ...auth },
           body: JSON.stringify({
             data: [
               { path: paths[0], meta: { _type: 'gradio.FileData' } },
@@ -813,26 +815,42 @@
 
         setStatus('Menggambar panorama 360°… (ZeroGPU ±10–60 detik)');
         const out = await new Promise((resolve, reject) => {
-          const es = new EventSource(base + '/gradio_api/call/generate_skybox/' + eventId);
-          es.onmessage = ev => {
-            let d; try { d = JSON.parse(ev.data); } catch { return; }
-            if (d.msg === 'process_completed') {
-              es.close();
-              const errMsg = d.output && d.output.error;
-              if (errMsg) reject(new Error(errMsg));
-              else resolve(d.output.data);
-            } else if (d.msg === 'process_error' || d.msg === 'unexpected_error') {
-              es.close();
-              const errMsg = (d.output && d.output.error) || d.message || 'Error di Space';
-              reject(new Error(String(errMsg).slice(0, 180)));
-            } else if (d.msg === 'estimation' && d.rank && d.rank > 1) {
-              setStatus('Antre di GPU Zero… posisi ' + d.rank + ' (±' + Math.round((d.rank_eta || 0)) + ' detik)');
+          const stream = fetch(base + '/gradio_api/call/generate_skybox/' + eventId, { headers: auth });
+          stream.then(async r => {
+            if (!r.ok || !r.body) { reject(new Error('Stream gagal (HTTP ' + r.status + ')')); return; }
+            const reader = r.body.getReader();
+            const dec = new TextDecoder();
+            let buf = '';
+            for (;;) {
+              const { value, done } = await reader.read();
+              if (done) break;
+              buf += dec.decode(value, { stream: true });
+              let idx;
+              while ((idx = buf.indexOf('\n\n')) >= 0) {
+                const chunk = buf.slice(0, idx);
+                buf = buf.slice(idx + 2);
+                for (const line of chunk.split('\n')) {
+                  if (!line.startsWith('data:')) continue;
+                  let d; try { d = JSON.parse(line.slice(5)); } catch { continue; }
+                  if (d.msg === 'process_completed') {
+                    const errMsg = d.output && d.output.error;
+                    if (errMsg) reject(new Error(errMsg));
+                    else resolve(d.output.data);
+                    return;
+                  }
+                  if (d.msg === 'process_error' || d.msg === 'unexpected_error') {
+                    const errMsg = (d.output && d.output.error) || d.message || 'Error di Space';
+                    reject(new Error(String(errMsg).slice(0, 180)));
+                    return;
+                  }
+                  if (d.msg === 'estimation' && d.rank && d.rank > 1) {
+                    setStatus('Antre di GPU Zero… posisi ' + d.rank);
+                  }
+                }
+              }
             }
-          };
-          es.onerror = () => {
-            es.close();
-            reject(new Error('Koneksi ke Space terputus — jaringan mungkin memblokir *.hf.space (coba hotspot/VPN).'));
-          };
+            reject(new Error('Stream ditutup sebelum selesai.'));
+          }).catch(e => reject(e instanceof Error ? e : new Error(String(e))));
         });
 
         const outFile = out[1] || out[0];
