@@ -125,8 +125,19 @@
           <option value="cyberpunk neon city skyline">Cyberpunk Neon City</option>
           <option value="anime fantasy landscape, stylized">Anime Stylized Horizon</option>
         </select>
-        <div class="seglabel" style="margin-top:12px">URL Hugging Face Space (buat sekali — lihat panduan di bawah)</div>
-        <input id="aiSpaceUrl" type="text" placeholder="username-skybox-360-backend.hf.space" style="width:100%;min-height:40px;border-radius:8px;border:1px solid var(--line);background:var(--panel2);color:var(--text);font:inherit;padding:0 10px">
+        <div class="seglabel" style="margin-top:12px">Mesin AI</div>
+        <select id="aiEngine" aria-label="Mesin AI" style="width:100%;min-height:40px;border-radius:8px;border:1px solid var(--line);background:var(--panel2);color:var(--text);font:inherit">
+          <option value="diff" selected>Diffusion360 — cepat (±10 dtk)</option>
+          <option value="qwen">Qwen-360 — SOTA (20B, ±1–3 mnt, kuota lebih besar)</option>
+        </select>
+        <div id="aiUrlWrapDiff">
+          <div class="seglabel" style="margin-top:12px">URL Space Diffusion360</div>
+          <input id="aiSpaceUrl" type="text" placeholder="username-skybox-360-backend.hf.space" style="width:100%;min-height:40px;border-radius:8px;border:1px solid var(--line);background:var(--panel2);color:var(--text);font:inherit;padding:0 10px">
+        </div>
+        <div id="aiUrlWrapQwen" hidden>
+          <div class="seglabel" style="margin-top:12px">URL Space Qwen-360</div>
+          <input id="aiSpaceUrlQwen" type="text" placeholder="username-skybox-360-qwen.hf.space" style="width:100%;min-height:40px;border-radius:8px;border:1px solid var(--line);background:var(--panel2);color:var(--text);font:inherit;padding:0 10px">
+        </div>
         <div class="seglabel" style="margin-top:12px">Token Hugging Face (opsional — kuota ZeroGPU jauh lebih besar)</div>
         <input id="aiToken" type="password" placeholder="hf_… (buat di huggingface.co/settings/tokens)" style="width:100%;min-height:40px;border-radius:8px;border:1px solid var(--line);background:var(--panel2);color:var(--text);font:inherit;padding:0 10px">
         <button type="button" class="primary" id="btnAiGenerate" disabled style="width:100%;margin-top:10px">Generate 360° (±10–30 detik)</button>

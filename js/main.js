@@ -761,16 +761,29 @@
     });
 
     const spaceUrl = () => {
-      let v = $('aiSpaceUrl').value.trim().replace(/^https?:\/\//, '').replace(/\/+$/, '');
+      const engine = $('aiEngine').value;
+      const raw = (engine === 'qwen' ? $('aiSpaceUrlQwen').value : $('aiSpaceUrl').value)
+        .trim().replace(/^https?:\/\//, '').replace(/\/+$/, '');
       // Terima juga halaman Space lengkap: huggingface.co/spaces/owner/name → owner-name.hf.space
-      const m = v.match(/^(?:www\.)?huggingface\.co\/spaces\/([^/]+)\/([^/?#]+)/);
-      if (m) v = `${m[1]}-${m[2]}`;
-      if (!/\.hf\.space$/.test(v) && !/^huggingface\.co\//.test(v)) v += '.hf.space';
-      return 'https://' + v;
+      const m = raw.match(/^(?:www\.)?huggingface\.co\/spaces\/([^/]+)\/([^/?#]+)/);
+      if (m) raw = `${m[1]}-${m[2]}`;
+      if (!/\.hf\.space$/.test(raw) && !/^huggingface\.co\//.test(raw)) raw += '.hf.space';
+      return 'https://' + raw;
     };
+    const syncEngineUI = () => {
+      const q = $('aiEngine').value === 'qwen';
+      $('aiUrlWrapDiff').hidden = q;
+      $('aiUrlWrapQwen').hidden = !q;
+    };
+    $('aiEngine').addEventListener('change', syncEngineUI);
+    syncEngineUI();
     $('aiSpaceUrl').value = localStorage.getItem('nakaHfSpace') || '';
     $('aiSpaceUrl').addEventListener('change', () => {
-      localStorage.setItem('nakaHfSpace', spaceUrl());
+      localStorage.setItem('nakaHfSpace', $('aiSpaceUrl').value.trim());
+    });
+    $('aiSpaceUrlQwen').value = localStorage.getItem('nakaHfSpaceQwen') || '';
+    $('aiSpaceUrlQwen').addEventListener('change', () => {
+      localStorage.setItem('nakaHfSpaceQwen', $('aiSpaceUrlQwen').value.trim());
     });
     $('aiToken').value = localStorage.getItem('nakaHfToken') || '';
     $('aiToken').addEventListener('change', () => {

@@ -1,0 +1,10 @@
+torch
+transformers>=4.49.0
+diffusers>=0.36.0
+accelerate
+optimum-quanto
+sentencepiece
+spaces
+gradio
+pillow
+numpy

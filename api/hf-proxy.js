@@ -2,7 +2,10 @@
 // NAKA Studio bila koneksi langsung browser→Space gagal (ISP memblokir
 // *.hf.space). Hanya host Space yang di-allowlist di bawah yang diizinkan.
 // Edge runtime: streaming SSE dapat berjalan lama tanpa batas 10 detik.
-const ALLOWED = ['isandc-skybox-360-backend.hf.space'];
+// Allowlist berbasis pemilik Space (owner Hugging Face) — semua Space milik
+// isandc diizinkan, sehingga Space kedua/ketiga tidak perlu ubah kode.
+// Klien memanggil: /api/hf-proxy?h=<subdomain>.hf.space&p=<path>
+const OWNER = 'isandc-';
 
 export const config = { runtime: 'edge' };
 
@@ -18,14 +21,16 @@ export default async function handler(req) {
     });
   }
   const { searchParams } = new URL(req.url);
+  const host = (searchParams.get('h') || '').toLowerCase();
   const p = (searchParams.get('p') || '').replace(/^\/+/, '');
-  if (!p || !/^(gradio_api\/(upload|call\/|file=|info|config|queue\/))/.test(p)) {
-    return new Response(JSON.stringify({ error: 'Path tidak diizinkan.' }), {
+  const hostOk = host.endsWith('.hf.space') && host.startsWith(OWNER) && /^[a-z0-9-]+\.hf\.space$/.test(host);
+  if (!hostOk || !p || !/^(gradio_api\/(upload|call\/|file=|info|config|queue\/))/.test(p)) {
+    return new Response(JSON.stringify({ error: 'Path/host tidak diizinkan.' }), {
       status: 400,
       headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
     });
   }
-  const url = 'https://' + ALLOWED[0] + '/' + p;
+  const url = 'https://' + host + '/' + p;
 
   const headers = new Headers();
   for (const h of ['authorization', 'content-type', 'accept', 'user-agent', 'accept-language']) {
