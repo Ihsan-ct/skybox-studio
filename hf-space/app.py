@@ -5,9 +5,9 @@ from PIL import Image, ImageOps
 import numpy as np
 from diffusers import StableDiffusionInpaintPipeline
 
-# Catatan: runwayml/stable-diffusion-inpainting sudah dihapus dari HF Hub.
-# stabilityai/stable-diffusion-2-inpainting licin (CreativeML Open R++) dan bekerja sama.
-model_id = "stabilityai/stable-diffusion-2-inpainting"
+# Catatan: runwayml & stabilityai versi inpainting sudah dihapus dari HF Hub.
+# botp/stable-diffusion-v1-5-inpainting = mirror resmi SD1.5-inpainting yang masih hidup & tidak gated.
+model_id = "botp/stable-diffusion-v1-5-inpainting"
 pipe = StableDiffusionInpaintPipeline.from_pretrained(
     model_id,
     torch_dtype=torch.float16
