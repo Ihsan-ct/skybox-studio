@@ -16,8 +16,8 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600;700&display=swap">
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <script src="js/i18n.js?v=171"></script>
-  <link rel="stylesheet" href="css/app.css?v=171">
+  <script src="js/i18n.js?v=172"></script>
+  <link rel="stylesheet" href="css/app.css?v=172">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" integrity="sha512-dLxUelApnYxpLt6K2iomGngnHO83iUvZytA3YjDUCjT0HDOHKXnVYdf3hU4JjM8uEhxf9nD1/ey98U3t2vZ0qQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" integrity="sha512-XMVd28F1oH/O71fzwBnV7HucLxVwtxf26XV8P4wPk26EDxuGZ91N8bsOttmnomcCD3CS5ZMRL50H0GgOHvegtg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 </head>
@@ -59,6 +59,7 @@
   <section id="sec-preview" class="card" aria-label="Hasil">
     <div class="tabs" role="tablist" aria-label="Bagian aplikasi">
       <button role="tab" id="tab-konversi" aria-selected="true" aria-controls="panel-konversi" tabindex="0" type="button" data-i18n="tabConvert">Konversi</button>
+      <button role="tab" id="tab-ai360" aria-selected="false" aria-controls="panel-ai360" tabindex="-1" type="button">AI 360</button>
       <button role="tab" id="tab-roblox" aria-selected="false" aria-controls="panel-roblox" tabindex="-1" type="button" data-i18n="tabRoblox">Roblox</button>
       <button role="tab" id="tab-alat" aria-selected="false" aria-controls="panel-alat" tabindex="-1" type="button" data-i18n="tabTools">Alat</button>
       <button role="tab" id="tab-prompt" aria-selected="false" aria-controls="panel-prompt" tabindex="-1" type="button" data-i18n="tabPrompt">AI Prompt</button>
@@ -100,6 +101,42 @@
         <summary>Ekspor sisi tunggal (PNG per properti)</summary>
         <div class="facebtns" id="facebtns"></div>
         <div id="status" role="status" aria-live="polite"></div>
+      </details>
+    </div>
+
+    <!-- ═══ AI 360: outpaint 2D → panorama seamless via Hugging Face Space ═══ -->
+    <div id="panel-ai360" role="tabpanel" aria-labelledby="tab-ai360" hidden>
+      <details class="group" open>
+        <summary>AI 360 — gambar 2D jadi panorama 360° seamless (Hugging Face gratis)</summary>
+        <p class="note" style="margin-top:4px">AI mengisi sisa 270° lingkaran &amp; kutub dengan circular tiling — tepi kiri–kanan dijamin nyambung. Hasilnya otomatis masuk mode panorama (2:1).</p>
+        <div class="row" style="gap:8px;margin-top:8px">
+          <input type="file" id="aiFile" accept="image/*" hidden>
+          <button type="button" class="btn" id="btnAiPick">Pilih Gambar 2D</button>
+          <button type="button" class="btn" id="btnAiUse" disabled>Gunakan Hasil di Konversi</button>
+        </div>
+        <p class="note" id="aiFileName">Belum ada gambar</p>
+        <img id="aiPreview" alt="" style="display:none;max-width:100%;border-radius:8px;border:1px solid var(--line);margin-top:6px">
+        <div class="seglabel" style="margin-top:12px">Gaya lingkungan</div>
+        <select id="aiStyle" aria-label="Gaya lingkungan" style="width:100%;min-height:40px;border-radius:8px;border:1px solid var(--line);background:var(--panel2);color:var(--text);font:inherit">
+          <option value="realistic clear blue sky, fluffy clouds" selected>Realistic Clear Sky</option>
+          <option value="night stars and nebula, deep blue">Night Sky &amp; Stars</option>
+          <option value="dramatic sunset clouds, golden hour">Dramatic Sunset</option>
+          <option value="cyberpunk neon city skyline">Cyberpunk Neon City</option>
+          <option value="anime fantasy landscape, stylized">Anime Stylized Horizon</option>
+        </select>
+        <div class="seglabel" style="margin-top:12px">URL Hugging Face Space (buat sekali — lihat panduan di bawah)</div>
+        <input id="aiSpaceUrl" type="text" placeholder="username-skybox-360-backend.hf.space" style="width:100%;min-height:40px;border-radius:8px;border:1px solid var(--line);background:var(--panel2);color:var(--text);font:inherit;padding:0 10px">
+        <button type="button" class="primary" id="btnAiGenerate" disabled style="width:100%;margin-top:10px">Generate 360° (±10–30 detik)</button>
+        <p class="note" id="aiStatus"></p>
+        <img id="aiResult" alt="" style="display:none;max-width:100%;border-radius:8px;border:1px solid var(--line);margin-top:6px">
+        <details class="group" style="margin-top:12px">
+          <summary>Panduan membuat Space (sekali saja, 2 file, gratis)</summary>
+          <ol class="note" style="padding-left:18px;line-height:1.7">
+            <li>Buat akun di <strong>huggingface.co</strong> → pojok kanan atas → <em>New Space</em>. Nama: <code>skybox-360-backend</code>, SDK: <strong>Gradio</strong>, Hardware: <strong>ZeroGPU (gratis)</strong>.</li>
+            <li>Di Space, buat file <code>requirements.txt</code> dan <code>app.py</code> — salin isinya dari folder <code>hf-space/</code> di repo ini.</li>
+            <li>Tunggu status <em>Running</em>, lalu salin alamat Space (contoh: <code>username-skybox-360-backend.hf.space</code>, tanpa https://) ke kolom di atas.</li>
+          </ol>
+        </details>
       </details>
     </div>
 
@@ -274,23 +311,23 @@
 <footer class="site-footer"><span>NAKA Studio · Pemrosesan 100% di browser, API key tidak disimpan di server.</span><span><a href="https://github.com/Ihsan-ct/skybox-studio" target="_blank" rel="noopener">GitHub</a> · MIT</span></footer>
 <noscript><p style="padding:16px">Aplikasi ini membutuhkan JavaScript dan WebGL.</p></noscript>
 
-<script src="js/gl-convert.js?v=171"></script>
-<script src="js/testpattern.js?v=171"></script>
-<script src="js/viewer3d.js?v=171"></script>
-<script src="js/zip-export.js?v=171"></script>
-<script src="js/luau.js?v=171"></script>
-<script src="js/stitcher.js?v=171"></script>
-<script src="js/batch.js?v=171"></script>
-<script src="js/prompt-lib.js?v=171"></script>
-<script src="js/samples.js?v=171"></script>
-<script src="js/deswirl.js?v=171"></script>
-<script src="js/paket.js?v=171"></script>
-<script src="js/auth.js?v=171"></script>
-<script src="js/vault.js?v=171"></script>
-<script src="js/roblox-upload.js?v=171"></script>
-<script src="js/flat2pano.js?v=171"></script>
-<script src="js/pano-async.js?v=171"></script>
-<script src="js/main.js?v=171"></script>
-<script src="js/skyfx.js?v=171"></script>
+<script src="js/gl-convert.js?v=172"></script>
+<script src="js/testpattern.js?v=172"></script>
+<script src="js/viewer3d.js?v=172"></script>
+<script src="js/zip-export.js?v=172"></script>
+<script src="js/luau.js?v=172"></script>
+<script src="js/stitcher.js?v=172"></script>
+<script src="js/batch.js?v=172"></script>
+<script src="js/prompt-lib.js?v=172"></script>
+<script src="js/samples.js?v=172"></script>
+<script src="js/deswirl.js?v=172"></script>
+<script src="js/paket.js?v=172"></script>
+<script src="js/auth.js?v=172"></script>
+<script src="js/vault.js?v=172"></script>
+<script src="js/roblox-upload.js?v=172"></script>
+<script src="js/flat2pano.js?v=172"></script>
+<script src="js/pano-async.js?v=172"></script>
+<script src="js/main.js?v=172"></script>
+<script src="js/skyfx.js?v=172"></script>
 </body>
 </html>

@@ -735,13 +735,75 @@
     setImage(c, c.width, c.height, 'Gambar Uji', null, { skipRatioCheck: true });
   });
 
-  const tabNames = ['konversi', 'roblox', 'alat', 'prompt'];
+  const tabNames = ['konversi', 'ai360', 'roblox', 'alat', 'prompt'];
   window.Stitcher.build($('panel-stitch'));
   window.BatchConvert.build($('panel-batch'), state, () => requestRender());
   window.PromptLib.build($('panel-prompt'));
   if (window.DeSwirl) window.DeSwirl.build($('panel-deswirl'), state, requestRender);
   if (window.PaketLangit) window.PaketLangit.build($('panel-paket'), state);
   if (window.RobloxUpload) window.RobloxUpload.build($('rbxWizard'), state, refreshLuau);
+
+  // ── AI 360: outpaint gambar 2D → panorama seamless via Hugging Face Space ──
+  (function buildAi360() {
+    if (!$('panel-ai360')) return;
+    let aiBlob = null;
+    let aiResultUrl = null;
+
+    $('btnAiPick').addEventListener('click', () => $('aiFile').click());
+    $('aiFile').addEventListener('change', () => {
+      const f = $('aiFile').files[0];
+      if (!f) return;
+      aiBlob = f;
+      $('aiFileName').textContent = f.name + ' · ' + (f.size / 1024 / 1024).toFixed(2) + ' MB';
+      $('aiPreview').src = URL.createObjectURL(f);
+      $('aiPreview').style.display = 'block';
+      $('btnAiGenerate').disabled = false;
+    });
+
+    const spaceUrl = () => $('aiSpaceUrl').value.trim().replace(/^https?:\/\//, '').replace(/\/$/, '');
+    $('aiSpaceUrl').value = localStorage.getItem('nakaHfSpace') || '';
+    $('aiSpaceUrl').addEventListener('change', () => {
+      localStorage.setItem('nakaHfSpace', spaceUrl());
+    });
+
+    const setStatus = t => { $('aiStatus').textContent = t; };
+
+    $('btnAiGenerate').addEventListener('click', async () => {
+      const url = spaceUrl();
+      if (!aiBlob) { setStatus('Pilih gambar dulu.'); return; }
+      if (!url) { setStatus('Isi URL Hugging Face Space dulu (lihat panduan di bawah).'); return; }
+      $('btnAiGenerate').disabled = true;
+      try {
+        setStatus('Menghubungkan ke Space…');
+        const { Client } = await import('https://cdn.jsdelivr.net/npm/@gradio/client/+esm');
+        const app = await Client.connect(url);
+        setStatus('Menggambar panorama 360°… (ZeroGPU bisa antre ±10–60 detik)');
+        const res = await app.predict('/predict', [aiBlob, $('aiStyle').value]);
+        const fd = res.data && res.data[0];
+        const outUrl = fd && (fd.url || (typeof fd === 'string' && fd));
+        if (!outUrl) throw new Error('Format jawaban Space tidak dikenal.');
+        aiResultUrl = outUrl;
+        $('aiResult').src = outUrl;
+        $('aiResult').style.display = 'block';
+        $('btnAiUse').disabled = false;
+        setStatus('Selesai! Klik "Gunakan Hasil di Konversi" untuk lanjut ke ekspor 6 sisi.');
+      } catch (e) {
+        setStatus('Gagal: ' + (e && e.message ? e.message : e) + ' — cek URL Space & status Running di Hugging Face.');
+      }
+      $('btnAiGenerate').disabled = false;
+    });
+
+    $('btnAiUse').addEventListener('click', async () => {
+      if (!aiResultUrl) return;
+      try {
+        const blob = await (await fetch(aiResultUrl)).blob();
+        loadFile(new File([blob], 'ai-panorama.png', { type: blob.type || 'image/png' }));
+        switchTab('konversi');
+      } catch (e) {
+        addBanner('error', 'Gagal memuat hasil: ' + e.message);
+      }
+    });
+  })();
 
   // Sub-tab di panel Alat: Stitcher / Batch / Perbaiki Pilinan / Paket Langit
   const alatTabs = [
