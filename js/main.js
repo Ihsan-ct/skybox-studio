@@ -762,7 +762,7 @@
 
     const spaceUrl = () => {
       const engine = $('aiEngine').value;
-      const raw = (engine === 'qwen' ? $('aiSpaceUrlQwen').value : $('aiSpaceUrl').value)
+      let raw = (engine === 'qwen' ? $('aiSpaceUrlQwen').value : $('aiSpaceUrl').value)
         .trim().replace(/^https?:\/\//, '').replace(/\/+$/, '');
       // Terima juga halaman Space lengkap: huggingface.co/spaces/owner/name → owner-name.hf.space
       const m = raw.match(/^(?:www\.)?huggingface\.co\/spaces\/([^/]+)\/([^/?#]+)/);
