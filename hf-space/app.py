@@ -1,9 +1,9 @@
+import spaces          # WAJIB paling atas sebelum torch/diffusers (aturan ZeroGPU)
 import gradio as gr
 import torch
 from PIL import Image, ImageOps
 import numpy as np
 from diffusers import StableDiffusionInpaintPipeline
-import spaces
 
 # Catatan: runwayml/stable-diffusion-inpainting sudah dihapus dari HF Hub.
 # stabilityai/stable-diffusion-2-inpainting licin (CreativeML Open R++) dan bekerja sama.
