@@ -19,6 +19,7 @@ window.Viewer3D = (function () {
   const activePointers = new Map();
   let lastPinchDist = null;
   let lastX = 0, lastY = 0;
+  let lastInteract = 0;
   let fovListener = null;
 
   const MAX_PITCH = 89 * Math.PI / 180;
@@ -279,6 +280,7 @@ window.Viewer3D = (function () {
     scene.add(ambLight, dirLight);
 
     container.addEventListener('pointerdown', e => {
+      lastInteract = performance.now();
       container.setPointerCapture(e.pointerId);
       activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
       velYaw = 0; velPitch = 0; isInertiaRunning = false;
@@ -294,6 +296,7 @@ window.Viewer3D = (function () {
       activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
 
       if (activePointers.size === 1) {
+        lastInteract = performance.now();
         const dx = e.clientX - lastX;
         const dy = e.clientY - lastY;
         lastX = e.clientX; lastY = e.clientY;
@@ -339,6 +342,7 @@ window.Viewer3D = (function () {
 
     container.addEventListener('wheel', e => {
       e.preventDefault();
+      lastInteract = performance.now();
       const delta = Math.sign(e.deltaY) * 3;
       setFov(camera.fov + delta);
     }, { passive: false });
@@ -369,6 +373,21 @@ window.Viewer3D = (function () {
     isVisible = true;
     isInitialized = true;
     requestRender();
+
+    // ── Auto-orbit saat idle: langit berputar pelan sendiri sehingga hasil
+    //    konversi langsung terlihat hidup. Berhenti begitu pengguna menyentuh
+    //    preview, lanjut lagi 2 detik setelah interaksi terakhir. ──
+    function orbitLoop(now) {
+      requestAnimationFrame(orbitLoop);
+      if (!renderer || !scene || !camera || !isVisible || document.hidden) return;
+      if (activePointers.size || now - lastInteract < 2000) return;
+      camYaw -= 0.0011;                       // ≈ 3.8°/detik — pelan & halus
+      velYaw = 0; velPitch = 0; isInertiaRunning = false;
+      updateCameraOrientation();
+      renderer.render(scene, camera);
+      if (camCb) camCb({ yaw: camYaw * 180 / Math.PI, pitch: camPitch * 180 / Math.PI }, camera.fov);
+    }
+    requestAnimationFrame(orbitLoop);
   }
 
   function onResize() {

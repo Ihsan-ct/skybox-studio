@@ -629,3 +629,25 @@ body::after { display: none; }  /* bintang CSS dimatikan, diganti canvas ber-par
   .card:hover, button:hover:not(:disabled), .btn:hover, .tabs [role="tab"]:hover { transform: none; }
   button.smp:hover img { transform: none; }
 }
+
+/* ═══════════ AMBIENT MOTION BOOST (v1.9.2) — animasi yang jelas terlihat ═══════════ */
+@keyframes nakaPulse {
+  0%, 100% { box-shadow: 0 0 22px rgba(53, 220, 255, .3), 0 0 5px rgba(53, 220, 255, .32); }
+  50%      { box-shadow: 0 0 38px rgba(53, 220, 255, .55), 0 0 12px rgba(53, 220, 255, .5); }
+}
+button.primary { animation: nakaPulse 3.2s ease-in-out infinite; }
+
+@keyframes nakaSheen { to { background-position: 220% 0; } }
+header .brand h1 .cy {
+  background: linear-gradient(90deg, #2f8cff, #7cf3ff, #35dcff, #2f8cff);
+  background-size: 220% 100%;
+  -webkit-background-clip: text; background-clip: text;
+  animation: nakaSheen 5.5s linear infinite;
+}
+
+/* Aurora lebih hidup */
+body::before { filter: saturate(1.4) brightness(1.15); animation-duration: 18s; }
+
+@media (prefers-reduced-motion: reduce) {
+  button.primary, header .brand h1 .cy { animation: none; }
+}

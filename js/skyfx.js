@@ -10,6 +10,7 @@ window.SkyFX = (function () {
   let w = 0, h = 0, dpr = 1;
   let nextMeteor = 0;
   const N = 150;
+  const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   function seed() {
     stars = [];
@@ -18,8 +19,8 @@ window.SkyFX = (function () {
       stars.push({
         x: Math.random(), y: Math.random(),
         depth,
-        r: depth * 1.5 + 0.3,
-        base: 0.25 + depth * 0.55,
+        r: depth * 1.7 + 0.4,
+        base: 0.38 + depth * 0.5,
         tw: Math.random() * Math.PI * 2,                  // fase kelip
         ts: 0.4 + Math.random() * 1.2,                    // kecepatan kelip
         hue: Math.random() < 0.18 ? 200 : 0               // sedikit biru
@@ -43,17 +44,18 @@ window.SkyFX = (function () {
       vx: Math.cos(ang) * speed * -1, vy: Math.sin(ang) * speed * 0.6,
       life: 0, ttl: 0.9 + Math.random() * 0.5, len: 120 + Math.random() * 90
     });
-    nextMeteor = now + 5500 + Math.random() * 4500;
+    nextMeteor = now + 2800 + Math.random() * 3200;
   }
 
   function draw(now) {
     const t = now / 1000;
+    const drift = reduced ? 0.6 : 3.0;
     mx += (tx - mx) * 0.04;
     my += (ty - my) * 0.04;
     ctx.clearRect(0, 0, w, h);
 
     for (const s of stars) {
-      const px = ((s.x * w + mx * 26 * s.depth + t * 2.4 * s.depth) % (w + 40)) - 20;
+      const px = ((s.x * w + mx * 26 * s.depth + t * drift * s.depth) % (w + 40)) - 20;
       const py = ((s.y * h + my * 18 * s.depth) % (h + 40)) - 20;
       const a = s.base * (0.72 + 0.28 * Math.sin(t * s.ts + s.tw));
       ctx.globalAlpha = Math.max(0.05, a);
@@ -63,7 +65,7 @@ window.SkyFX = (function () {
       ctx.fill();
     }
 
-    if (now >= nextMeteor) spawnMeteor(now);
+    if (!reduced && now >= nextMeteor) spawnMeteor(now);
     for (let i = meteors.length - 1; i >= 0; i--) {
       const m = meteors[i];
       m.life += 1 / 60;
@@ -103,27 +105,22 @@ window.SkyFX = (function () {
   }
 
   function init() {
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      // Render statis sekali — tanpa animasi (aturan skill).
-      canvas = document.getElementById("skyfx");
-      if (!canvas) return;
-      ctx = canvas.getContext("2d");
-      resize(); seed();
-      draw(0);
-      return;
-    }
+    // Reduced motion tetap mendapat drift sangat lambat tanpa bintang jatung;
+    // gerak besar (meteor, parallax) dimatikan.
     canvas = document.createElement("canvas");
     canvas.id = "skyfx";
     document.body.appendChild(canvas);
     ctx = canvas.getContext("2d");
     resize();
     seed();
-    nextMeteor = performance.now() + 2600;
+    nextMeteor = performance.now() + 1800;
     window.addEventListener("resize", () => { resize(); }, { passive: true });
-    window.addEventListener("pointermove", e => {
-      tx = (e.clientX / window.innerWidth - 0.5) * 2;
-      ty = (e.clientY / window.innerHeight - 0.5) * 2;
-    }, { passive: true });
+    if (!reduced) {
+      window.addEventListener("pointermove", e => {
+        tx = (e.clientX / window.innerWidth - 0.5) * 2;
+        ty = (e.clientY / window.innerHeight - 0.5) * 2;
+      }, { passive: true });
+    }
     document.addEventListener("visibilitychange", () => {
       if (document.hidden) stop(); else start();
     });
