@@ -8,3 +8,4 @@ py360convert
 numpy
 pillow
 setuptools<81
+opencv-python
