@@ -68,7 +68,16 @@ def generate_skybox(input_image, prompt_style):
     paste_y = max(int(target_h * 0.05), min(target_h - input_h - int(target_h * 0.05), paste_y))
     paste_x = (target_w - input_w) // 2
 
-    canvas = Image.new("RGB", (target_w, target_h), (0, 0, 0))
+    # Kanvas BUKAN hitam: gradien langit→tanah dari warna gambar sendiri,
+    # memberi petunjuk arah dunia ke AI (mencegah "tanah di langit").
+    px = np.asarray(resized_input, dtype=np.float32)
+    top_strip = px[: max(1, input_h // 10)].mean(axis=(0, 1))          # rata-rata tepi atas gambar
+    bottom_strip = px[-max(1, input_h // 10):].mean(axis=(0, 1))       # rata-rata tepi bawah gambar
+    canvas_np = np.zeros((target_h, target_w, 3), dtype=np.float32)
+    for y in range(target_h):
+        k = y / (target_h - 1)
+        canvas_np[y, :] = top_strip * (1 - k) + bottom_strip * k
+    canvas = Image.fromarray(np.clip(canvas_np, 0, 255).astype(np.uint8))
     canvas.paste(resized_input, (paste_x, paste_y))
 
     # Mask: hitam = pertahankan gambar asli, putih = area yang di-outpaint AI
