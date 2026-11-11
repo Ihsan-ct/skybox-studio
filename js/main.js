@@ -853,10 +853,14 @@
             const collected = [];
             const handle = (name, raw) => {
               let payload;
-              try { payload = JSON.parse(raw); } catch { return; }
+              try { payload = JSON.parse(raw); } catch { return false; }
               const add = f => { if (f && f.path) collected.push(f); };
+              const detail = p => {
+                const m = p && (p.output && p.output.error || p.message || p.error || p.detail);
+                return String(m || JSON.stringify(p)).slice(0, 250);
+              };
               if (name === 'error') {
-                reject(new Error(typeof payload === 'string' ? payload : (payload && payload.message) || 'Error di Space'));
+                reject(new Error(detail(payload)));
                 return true;
               }
               if (Array.isArray(payload)) { payload.forEach(add); return false; }
@@ -868,8 +872,7 @@
                 return false;
               }
               if (payload && (payload.msg === 'process_error' || payload.msg === 'unexpected_error')) {
-                const errMsg = (payload.output && payload.output.error) || payload.message || 'Error di Space';
-                reject(new Error(String(errMsg).slice(0, 180)));
+                reject(new Error(detail(payload)));
                 return true;
               }
               if (payload && payload.path) { add(payload); return false; }
