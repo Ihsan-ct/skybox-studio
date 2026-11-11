@@ -295,33 +295,34 @@
 
   function applyFlat() {
     if (!flat.src) return;
+    const note = $('flatNote');
     if (flat.mode === 'pano') {
+      // Gambar sudah 2:1 -> dipakai apa adanya (tanpa proyeksi ulang). Hanya rapikan kutub bila diminta.
       state.vOff = flat.vOff;
       const myToken = ++flatToken;
-      note.textContent = 'Memproses panorama di latar belakang…';
-      window.PanoAsync.convertAsync(
-        flat.src, flat.w, flat.h,
-        { fov: flat.fov, pitch: flatPitch(), edge: flat.edge, maxW: Math.min(4096, GL.getMaxTex()), fill: flat.fill },
-        flat.smooth, 0.12
-      ).then(c => {
-        if (token !== myToken) return;
-        setImage(c, c.width, c.height, flat.name + ' [2D→360°]', flat.size, { skipRatioCheck: true });
-        note.textContent = flat.fill === 'penuh' || flat.fill === 'penuhcermin'
-          ? 'Panorama 360° selesai diproses.'
-          : flat.fill === 'hybrid'
-            ? 'Hybrid selesai: gambar asli dipertahankan, area luar diperluas dengan push-pull + mirror extension, lalu dibaurkan agar panorama menyambung 360°.'
-            : flat.fill === 'cermin'
-              ? 'Mode Cermin selesai: area luar diperluas dengan mirror extension dan blur agar menyambung 360°.'
-              : 'Mode Halus selesai: area luar diisi dengan push-pull dan blur agar menyambung 360°.';
-      }).catch(err => {
-        if (token !== myToken) return;
+      if (flat.smooth <= 0) {
+        setImage(flat.src, flat.w, flat.h, flat.name, flat.size, { skipRatioCheck: true });
         note.textContent = '';
-        addBanner('error', 'Gagal mengubah gambar 2D menjadi panorama: ' + err.message);
-      });
+        return;
+      }
+      note.textContent = 'Merapikan kutub…';
+      setTimeout(() => {
+        if (flatToken !== myToken) return;
+        try {
+          const c = document.createElement('canvas');
+          c.width = flat.w; c.height = flat.h;
+          c.getContext('2d').drawImage(flat.src, 0, 0);
+          window.Flat2Pano.smoothPoles(c, 0.12, flat.smooth / 100);
+          setImage(c, c.width, c.height, flat.name, flat.size, { skipRatioCheck: true });
+          note.textContent = '';
+        } catch (err) {
+          note.textContent = '';
+          addBanner('error', 'Gagal merapikan kutub: ' + err.message);
+        }
+      }, 30);
       return;
     }
     const token = ++flatToken;
-    const note = $('flatNote');
     note.textContent = 'Memproses panorama…';
     setTimeout(() => {
       if (token !== flatToken) return;
