@@ -279,7 +279,7 @@
 
 
   // ---------- Gambar 2D biasa -> panorama 360° otomatis ----------
-  const flat = { src: null, w: 0, h: 0, name: '', size: null, mode: '2d', kind: 'scene', fov: 100, offset: 0, edge: 18, fill: 'penuh', smooth: 30, vOff: 0 };
+  const flat = { src: null, w: 0, h: 0, name: '', size: null, mode: '2d', kind: 'scene', fov: 100, offset: 0, edge: 18, fill: 'alaconv', smooth: 30, vOff: 0 };
   let flatTimer = null, flatToken = 0;
 
   function flatPitch() {
@@ -330,27 +330,31 @@
           fov: flat.fov, pitch: flatPitch(), edge: flat.edge, maxW: Math.min(4096, GL.getMaxTex())
         };
         let c;
-        if (flat.fill === 'penuh' || flat.fill === 'penuhcermin') {
-          c = flat.fill === 'penuh'
-            ? window.Flat2Pano.convertFull(flat.src, flat.w, flat.h, optPano)
-            : window.Flat2Pano.convertMirror(flat.src, flat.w, flat.h, optPano);
+        if (flat.fill === 'alaconv' || flat.fill === 'penuh' || flat.fill === 'penuhcermin') {
+          c = flat.fill === 'alaconv'
+            ? window.Flat2Pano.convertLocal(flat.src, flat.w, flat.h, optPano)
+            : flat.fill === 'penuh'
+              ? window.Flat2Pano.convertFull(flat.src, flat.w, flat.h, optPano)
+              : window.Flat2Pano.convertMirror(flat.src, flat.w, flat.h, optPano);
           // Mode penuh menaruh tepi gambar persis di kutub — butuh band lebih
           // luas dan rapikan lebih kuat agar kutub benar-benar rapi.
-          if (flat.smooth > 0) window.Flat2Pano.smoothPoles(c, 0.30, Math.min(1, 0.55 + flat.smooth / 100));
+          if (flat.smooth > 0) window.Flat2Pano.smoothPoles(c, flat.fill === 'alaconv' ? 0.14 : 0.30, Math.min(1, 0.5 + flat.smooth / 100));
         } else {
           c = window.Flat2Pano.convert(flat.src, flat.w, flat.h, Object.assign(optPano, { fill: flat.fill }));
         }
         if (token !== flatToken) return;
         setImage(c, c.width, c.height, flat.name + ' [2D→360°]', flat.size, { skipRatioCheck: true });
-        note.textContent = flat.fill === 'penuh'
-          ? 'Mode Penuh selesai: gambar dipakai penuh — direntangkan menutup seluruh 360° dan vertikal sampai kutub.'
-          : flat.fill === 'penuhcermin'
-            ? 'Mode Penuh Cermin selesai: [gambar asli | cermin] menutup 360° ala TC, direntangkan sampai kutub.'
-            : flat.fill === 'hybrid'
-              ? 'Hybrid selesai: gambar asli dipertahankan, area luar diperluas dengan push-pull + mirror extension, lalu dibaurkan agar panorama menyambung 360°.'
-              : flat.fill === 'cermin'
-                ? 'Mode Cermin selesai: area luar diperluas dengan mirror extension dan blur agar menyambung 360°.'
-                : 'Mode Halus selesai: area luar diisi dengan push-pull dan blur agar menyambung 360°.';
+        note.textContent = flat.fill === 'alaconv'
+          ? 'Mode ala converter selesai: lateral panorama penuh, atas gradasi langit, bawah warna laut flat — resep skybox 6 sisi klasik.'
+          : flat.fill === 'penuh'
+            ? 'Mode Penuh selesai: gambar dipakai penuh — direntangkan menutup seluruh 360° dan vertikal sampai kutub.'
+            : flat.fill === 'penuhcermin'
+              ? 'Mode Penuh Cermin selesai: [gambar asli | cermin] menutup 360° ala TC, direntangkan sampai kutub.'
+              : flat.fill === 'hybrid'
+                ? 'Hybrid selesai: gambar asli dipertahankan, area luar diperluas dengan push-pull + mirror extension, lalu dibaurkan agar panorama menyambung 360°.'
+                : flat.fill === 'cermin'
+                  ? 'Mode Cermin selesai: area luar diperluas dengan mirror extension dan blur agar menyambung 360°.'
+                  : 'Mode Halus selesai: area luar diisi dengan push-pull dan blur agar menyambung 360°.';
       } catch (e) {
         note.textContent = '';
         addBanner('error', 'Gagal mengubah gambar 2D menjadi panorama: ' + e.message);

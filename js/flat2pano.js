@@ -652,5 +652,73 @@ window.Flat2Pano = (function () {
     return out;
   }
 
-  return { convert, convertMirror, convertFull, smoothPoles };
+  // ── Mode ALA CONVERTER LOCAL: lateral panorama penuh, atas gradasi langit,
+  //    bawah WARNA FLAT dari strip bawah gambar — resep skybox 6 sisi klasik
+  //    (laut turquoise flat di bawah, langit bersih di atas). ──
+  function convertLocal(src, sw, sh, o) {
+    const maxW = o.maxW || 4096;
+    let W = Math.max(1024, Math.min(maxW, 2048));
+    W = Math.round(W / 2) * 2;
+    const H = W / 2;
+
+    const out = document.createElement('canvas');
+    out.width = W; out.height = H;
+    const og = out.getContext('2d', { willReadFrequently: true });
+    og.imageSmoothingEnabled = true;
+    og.imageSmoothingQuality = 'high';
+    og.drawImage(cleanedSource(src, sw, sh), 0, 0, W, H);
+
+    // Sambungan kiri↔kanan: refleksi-band (kolom 0 = kolom terakhir).
+    const K2 = Math.max(32, Math.round(W * 0.035));
+    const wrapped = og.getImageData(0, 0, W, H);
+    const wd = wrapped.data;
+    for (let y = 0; y < H; y++) {
+      for (let x = 0; x < K2; x++) {
+        const t = smoothstep(0, 1, (x + 0.5) / K2);
+        const i4 = (y * W + x) * 4;
+        const j4 = (y * W + (W - 1 - x)) * 4;
+        for (let ch = 0; ch < 3; ch++) {
+          wd[i4 + ch] = wd[j4 + ch] * (1 - t) + wd[i4 + ch] * t;
+        }
+      }
+    }
+
+    // Warna kutub dari gambar: atas = rata-rata strip 8% teratas,
+    // bawah = rata-rata strip 12% terbawah.
+    const avgStrip = (y0, y1) => {
+      let r = 0, g = 0, b = 0, n = 0;
+      for (let y = y0; y < y1; y++) {
+        for (let x = 0; x < W; x++) {
+          const i4 = (y * W + x) * 4;
+          r += wd[i4]; g += wd[i4 + 1]; b += wd[i4 + 2]; n++;
+        }
+      }
+      return [r / n, g / n, b / n];
+    };
+    const topC = avgStrip(0, Math.max(1, Math.round(H * 0.08)));
+    const botC = avgStrip(H - Math.max(1, Math.round(H * 0.12)), H);
+
+    // ZONA ATAS (v 0..0.12): kutub penuh warna atas, melunak ke konten.
+    for (let y = 0; y < Math.round(H * 0.12); y++) {
+      const t = smoothstep(0, 1, 1 - (y + 0.5) / (H * 0.12) * 3);   // 1 di kutub → 0
+      if (t <= 0) continue;
+      for (let x = 0; x < W; x++) {
+        const i4 = (y * W + x) * 4;
+        for (let ch = 0; ch < 3; ch++) wd[i4 + ch] = wd[i4 + ch] * (1 - t) + topC[ch] * t;
+      }
+    }
+    // ZONA BAWAH (v 0.84..1): dari konten melunak ke warna bawah FLAT.
+    const yStart = Math.round(H * 0.84);
+    for (let y = yStart; y < H; y++) {
+      const t = smoothstep(0, 1, (y - yStart + 0.5) / (H - yStart) * 2.2);   // 0 → 1 (penuh flat di kutub)
+      for (let x = 0; x < W; x++) {
+        const i4 = (y * W + x) * 4;
+        for (let ch = 0; ch < 3; ch++) wd[i4 + ch] = wd[i4 + ch] * (1 - t) + botC[ch] * t;
+      }
+    }
+    og.putImageData(wrapped, 0, 0);
+    return out;
+  }
+
+  return { convert, convertMirror, convertFull, convertLocal, smoothPoles };
 })();
