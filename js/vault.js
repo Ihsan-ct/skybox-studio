@@ -25,15 +25,17 @@ window.Vault = (function () {
     }
   }
   // Hanya metadata (tanpa API key) yang dikirim ke server.
+  // Server mengembalikan 501 bila database belum dikonfigurasi: berhenti memanggil /api/sync selama sesi ini.
+  let syncOff = false;
   function push() {
-    if (!uid) return;
+    if (!uid || syncOff) return;
     clearTimeout(timer);
-    timer = setTimeout(() => fetch('/api/sync', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ profiles: loadProfiles().map(strip), history: history() }) }).catch(() => {}), 600);
+    timer = setTimeout(() => fetch('/api/sync', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ profiles: loadProfiles().map(strip), history: history() }) }).then(r => { if (r.status === 501) syncOff = true; }).catch(() => {}), 600);
   }
   async function pull() {
-    if (!uid) return false;
+    if (!uid || syncOff) return false;
     try {
-      const r = await fetch('/api/sync'); if (!r.ok) return false;
+      const r = await fetch('/api/sync'); if (r.status === 501) syncOff = true; if (!r.ok) return false;
       const d = await r.json();
       if (!d.profiles && !d.history) { push(); return true; }
       const local = loadProfiles();

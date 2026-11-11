@@ -117,10 +117,10 @@
           <span style="font-size:13px;color:var(--muted);align-self:center">Studio: klik kanan <code>Lighting</code> &gt; <em>Insert From File</em>, pilih file ini.</span>
         </div>
         <details class="group" style="margin-top:8px">
-          <summary>Opsi script (matahari, kabut, pencahayaan)</summary>
+          <summary>Opsi script (matahari/bulan)</summary>
           <label class="check"><input type="checkbox" id="celestial" name="celestial"> Tampilkan matahari/bulan (CelestialBodiesShown)</label>
-          <label class="check"><input type="checkbox" id="withAtm" name="withAtm"> Sertakan Atmosphere (kabut udara — ubah suasana langit)</label>
-          <label class="check"><input type="checkbox" id="withLight" name="withLight" checked> Profil pencahayaan (atur Lighting: jam, ambient, bloom, fog — mengikuti mood langit)</label>
+          <label class="check" hidden><input type="checkbox" id="withAtm" name="withAtm"> Sertakan Atmosphere (kabut udara — ubah suasana langit)</label>
+          <label class="check" hidden><input type="checkbox" id="withLight" name="withLight"> Profil pencahayaan (atur Lighting: jam, ambient, bloom, fog — mengikuti mood langit)</label>
           <div class="row" id="lightRow" hidden>
             <select id="lightProfile" name="lightProfile" aria-label="Profil pencahayaan" style="min-height:40px;border-radius:8px;border:1px solid var(--line);background:var(--panel2);color:var(--text);font:inherit;flex:0 1 260px">
               <option value="auto" selected>Otomatis — analisis kecerahan gambar</option>

@@ -249,8 +249,8 @@ window.RobloxUpload = (function () {
           const atmC = document.getElementById('withAtm');
           const lightC = document.getElementById('withLight');
           const opts = {
-            atmosphere: atmC && atmC.checked ? (document.getElementById('atmPreset') || {}).value || 'normal' : 'none',
-            lighting: lightC && lightC.checked ? (document.getElementById('lightProfile') || {}).value || 'auto' : 'none'
+            atmosphere: 'none',
+            lighting: 'none'
           };
           const xml = window.LuauGen.buildRbxmx(state.ids, cel ? cel.checked : true, opts);
           const a = document.createElement('a');

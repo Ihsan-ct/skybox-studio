@@ -839,7 +839,7 @@
   $('celestial').addEventListener('change', refreshLuau);
   $('withAtm').addEventListener('change', () => { $('atmPresetRow').hidden = !$('withAtm').checked; refreshLuau(); });
   $('atmPreset').addEventListener('change', refreshLuau);
-  const atmOpts = () => ({ atmosphere: $('withAtm').checked ? $('atmPreset').value : 'none' });
+  const atmOpts = () => ({ atmosphere: 'none' }); // Sky murni: tanpa Atmosphere
 
   // Profil pencahayaan: mood terdeteksi otomatis dari kecerahan panorama.
   let moodDetected = null;
@@ -860,7 +860,7 @@
   $('withLight').addEventListener('change', () => { $('lightRow').hidden = !$('withLight').checked; refreshLuau(); });
   $('lightProfile').addEventListener('change', refreshLuau);
   const lightingOpts = () => {
-    if (!$('withLight').checked) return { lighting: 'none' };
+    return { lighting: 'none' }; // Sky murni: tanpa profil pencahayaan
     const v = $('lightProfile').value;
     return { lighting: v === 'auto' ? (moodDetected || detectMood() || 'siang') : v };
   };
