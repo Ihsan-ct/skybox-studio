@@ -48,6 +48,12 @@ STYLES = {
 
 @spaces.GPU
 def generate_skybox(input_image, prompt_style):
+    # ZeroGPU: pindahkan pipeline ke GPU DI DALAM fungsi (wajib, kalau tidak
+    # inferensi jalan di CPU dan melewati batas durasi).
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    img2pano.pipe.to(device)
+    img2pano.device = device
+
     if input_image is None:
         return None, None
 
